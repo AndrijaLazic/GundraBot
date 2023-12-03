@@ -1,2 +1,3 @@
-Before starting a project, you need to create a file named ".env" and insert bot tokens. Inside .env.example you can find template for your .env file.
+Before starting a project, you need to create a file named ".env" and insert discord bot tokens. Inside .env.example you can find template for your .env file.
 
+To start application open terminal and enter: nodemon src/index.js 
