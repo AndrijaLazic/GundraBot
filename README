@@ -1,0 +1,2 @@
+Before starting a project, you need to create a file named ".env" and insert bot tokens. Inside .env.example you can find template for your .env file.
+
