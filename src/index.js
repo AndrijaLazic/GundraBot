@@ -18,4 +18,12 @@ client.on("messageCreate",(message)=>{
     console.log(message.content)
 })
 
+client.once('reconnecting', (message) => {
+    console.log('Reconnecting!'+message);
+});
+
+client.once('disconnect', (message) => {
+    console.log('Disconnect!'+message);
+});
+
 client.login(process.env.TOKEN)
