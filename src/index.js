@@ -39,7 +39,7 @@ for(const file of commandFiles){
 const player=new Player(client,{
     ytdlOptions:{
         quality:"highest",//https://github.com/fent/node-ytdl-core/blob/9e15c7381f1eba188aba8b536097264db6ad3f7e/typings/index.d.ts#L24
-        highWaterMark:2000000//https://nodejs.org/api/stream.html#streamsetdefaulthighwatermarkobjectmode-value
+        highWaterMark:2000000//https://nodejs.org/api/stream.html#streamsetdefaulthighwatermarkobjectmode-value 
     }
 });
 player.extractors.loadDefault();

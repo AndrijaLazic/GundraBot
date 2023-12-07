@@ -4,38 +4,59 @@ let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../embedObjects/embed
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName("play")
-		.setDescription("play a song from YouTube.")
-		.addSubcommand(subcommand =>
-			subcommand
-				.setName("url")
-				.setDescription("Plays a single song from youtube url")
-				.addStringOption(option => option.setName("url").setDescription("the song's url").setRequired(true))
-		),
+		.setName("skip")
+		.setDescription("Skip current song"),
+
 	execute: async ({ client, interaction }) => {
 
         const channel = interaction.member.voice.channel;
         
         // Check if user is inside a voice channel
 		if (!channel) 
-            return interaction.reply("You need to be in a Voice Channel to play a song.");
+            return interaction.reply("You need to be in a Voice Channel to skip a song.");
 
         
         // Create a play queue for the server(singleton)
     
         const player = useMainPlayer();
-        const query = interaction.options.getString('url', true);
-        const searchResult = await player.search(query, { requestedBy: interaction.user });
         
         const guildNodeMenager=player.queues;
-        const guildQUEUE=guildNodeMenager.create(client.guilds.cache.get(interaction.guildId),
-        {
-            leaveOnEmpty:true,
-            leaveOnEmptyCooldown:30000,
-            leaveOnEnd:false,
-            leaveOnStop:false
-        })//creates a queue if it doesnt exist or returns a current queue
-                
+        //get a queue for the guild that requsted the interaction
+        const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId));
+        
+        if(!(guildQUEUE?.connection))
+            return interaction.reply("Bot is not connected to this channel.").then((reply)=>{
+                setTimeout(() => {
+                    reply.delete();
+                  }, 5000);
+        });
+
+
+        if(guildQUEUE?.isEmpty())
+            return interaction.reply("There are no songs to be skipped. Queue is empty.").then((reply)=>{
+                setTimeout(() => {
+                    reply.delete();
+                  }, 5000);
+        })
+
+
+
+        try{
+            guildQUEUE.removeTrack(guildQUEUE.currentTrack)
+        }
+        catch (e) {
+            // let's return error if something failed
+            console.log(e)
+            return interaction.reply(`Something went wrong: ${e}`).then((reply)=>{
+                setTimeout(() => {
+                    reply.delete();
+                  }, 5000);
+            })
+        }
+        
+        
+
+
 
         if (!searchResult.hasTracks()) {
             // If player didn't find any songs for this query
@@ -44,8 +65,7 @@ module.exports = {
         } else {
             try {
                 
-                if(!guildQUEUE.connection)
-                    await guildQUEUE.connect(channel);
+                
                 
                 
                 if(!guildQUEUE.isPlaying()){
