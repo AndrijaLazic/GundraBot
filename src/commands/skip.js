@@ -53,49 +53,6 @@ module.exports = {
                   }, 5000);
             })
         }
-        
-        
-
-
-
-        if (!searchResult.hasTracks()) {
-            // If player didn't find any songs for this query
-            await interaction.reply(`Bad url, use valid url please.`);
-            return;
-        } else {
-            try {
-                
-                
-                
-                
-                if(!guildQUEUE.isPlaying()){
-                    
-                    await guildQUEUE.play(searchResult.tracks[0], {
-                        nodeOptions: {
-                            metadata: interaction // we can access this metadata object using queue.metadata later on
-                        }
-                    });
-                }else{
-                    guildQUEUE.addTrack(searchResult.tracks[0])
-                }
-                
-                
-                
-                //await interaction.deleteReply();
-                // channel.send({ embeds: [musicEmbedMessage] });
-                
-               
-                musicEmbedMessage.fields[0].value=searchResult.tracks[0].title;
-                musicEmbedMessage.image.url=searchResult.tracks[0].thumbnail;
-                await interaction.reply({
-                    embeds: [musicEmbedMessage]
-                })
-            } catch (e) {
-                // let's return error if something failed
-                console.log(e)
-                return interaction.reply(`Something went wrong: ${e}`);
-            }
-        }
 
 	},
 }
