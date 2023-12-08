@@ -1,6 +1,6 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../embedObjects/embedMessageTemplate"))))).musicMessage;
+let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../replyFolder/embedMessageTemplate"))))).musicMessage;
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -30,10 +30,13 @@ module.exports = {
         const guildNodeMenager=player.queues;
         const guildQUEUE=guildNodeMenager.create(client.guilds.cache.get(interaction.guildId),
         {
-            leaveOnEmpty:true,
-            leaveOnEmptyCooldown:30000,
-            leaveOnEnd:false,
-            leaveOnStop:false
+            leaveOnStop: false,
+            leaveOnEmpty: true,
+            leaveOnEmptyCooldown: 30000,
+            leaveOnEnd: true,
+            leaveOnEndCooldown: 30000,
+            pauseOnEmpty: true
+            
         })//creates a queue if it doesnt exist or returns a current queue
                 
 
@@ -47,16 +50,11 @@ module.exports = {
                 if(!guildQUEUE.connection)
                     await guildQUEUE.connect(channel);
                 
+                guildQUEUE.addTrack(searchResult.tracks[0])
+
                 
                 if(!guildQUEUE.isPlaying()){
-                    
-                    await guildQUEUE.play(searchResult.tracks[0], {
-                        nodeOptions: {
-                            metadata: interaction // we can access this metadata object using queue.metadata later on
-                        }
-                    });
-                }else{
-                    guildQUEUE.addTrack(searchResult.tracks[0])
+                    await guildQUEUE.node.play();
                 }
                 
                 

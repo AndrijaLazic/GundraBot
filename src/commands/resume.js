@@ -1,11 +1,10 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../replyFolder/embedMessageTemplate"))))).musicMessage;
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName("skip")
-		.setDescription("Skip current song"),
+		.setName("resume")
+		.setDescription("Resume current song"),
 
 	execute: async ({ client, interaction }) => {
 
@@ -13,7 +12,7 @@ module.exports = {
         
         // Check if user is inside a voice channel
 		if (!channel) 
-            return interaction.reply("You need to be in a Voice Channel to skip a song.");
+            return interaction.reply("You need to be in a Voice Channel to resume a song.");
 
         
         // Create a play queue for the server(singleton)
@@ -34,23 +33,28 @@ module.exports = {
 
 
         try{
-            console.log(guildQUEUE.getSize())
-            if(guildQUEUE.isPlaying() || !(guildQUEUE.isEmpty())){
-                guildQUEUE.node.skip();
-            }
-            else{
-                return interaction.reply("There are no songs to be skipped. Queue is empty.").then((reply)=>{
+            if(!guildQUEUE.isPlaying()){
+                return interaction.reply("There is no song to resume").then((reply)=>{
                     setTimeout(() => {
                         reply.delete();
                       }, 5000);
                 })
             }
-                
-            return interaction.reply("Song removed from queue").then((reply)=>{
+            if(guildQUEUE.node.isPaused()){
+                guildQUEUE.node.resume();
+                return interaction.reply("Song resumed").then((reply)=>{
+                    setTimeout(() => {
+                        reply.delete();
+                      }, 5000);
+                })
+            }
+            return interaction.reply("Song is already playing").then((reply)=>{
                 setTimeout(() => {
                     reply.delete();
                   }, 5000);
             })
+                
+            
             
         }
         catch (e) {

@@ -1,11 +1,10 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../replyFolder/embedMessageTemplate"))))).musicMessage;
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName("skip")
-		.setDescription("Skip current song"),
+		.setName("pause")
+		.setDescription("Pause current song"),
 
 	execute: async ({ client, interaction }) => {
 
@@ -13,7 +12,7 @@ module.exports = {
         
         // Check if user is inside a voice channel
 		if (!channel) 
-            return interaction.reply("You need to be in a Voice Channel to skip a song.");
+            return interaction.reply("You need to be in a Voice Channel to pause a song.");
 
         
         // Create a play queue for the server(singleton)
@@ -36,21 +35,20 @@ module.exports = {
         try{
             console.log(guildQUEUE.getSize())
             if(guildQUEUE.isPlaying() || !(guildQUEUE.isEmpty())){
-                guildQUEUE.node.skip();
-            }
-            else{
-                return interaction.reply("There are no songs to be skipped. Queue is empty.").then((reply)=>{
+                guildQUEUE.node.pause();
+                return interaction.reply("Song paused").then((reply)=>{
                     setTimeout(() => {
                         reply.delete();
                       }, 5000);
                 })
             }
-                
-            return interaction.reply("Song removed from queue").then((reply)=>{
+            return interaction.reply("No song is playing").then((reply)=>{
                 setTimeout(() => {
                     reply.delete();
                   }, 5000);
             })
+                
+            
             
         }
         catch (e) {
