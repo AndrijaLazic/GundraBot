@@ -1,6 +1,8 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../replyFolder/embedMessageTemplate"))))).musicMessage;
+const embedMusicMessage  = require("../replyFolder/embedMessageTemplate")
+let musicEmbedMessage=new embedMusicMessage();
+
 
 module.exports = {
 	data: new SlashCommandBuilder()

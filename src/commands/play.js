@@ -1,6 +1,7 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-let musicEmbedMessage=((JSON.parse(JSON.stringify(require("../replyFolder/embedMessageTemplate"))))).musicMessage;
+const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
+let MusicMessageEmbed=new musicMessageEmbed();
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -62,11 +63,11 @@ module.exports = {
                 //await interaction.deleteReply();
                 // channel.send({ embeds: [musicEmbedMessage] });
                 
-               
-                musicEmbedMessage.fields[0].value=searchResult.tracks[0].title;
-                musicEmbedMessage.image.url=searchResult.tracks[0].thumbnail;
+                console.log(MusicMessageEmbed)
+                MusicMessageEmbed.fields[0].value=searchResult.tracks[0].title;
+                MusicMessageEmbed.image.url=searchResult.tracks[0].thumbnail;
                 await interaction.reply({
-                    embeds: [musicEmbedMessage]
+                    embeds: [MusicMessageEmbed]
                 })
             } catch (e) {
                 // let's return error if something failed
