@@ -1,5 +1,6 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
+const {replyControll} =require("../replyFolder/replyControll")
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -9,10 +10,11 @@ module.exports = {
 	execute: async ({ client, interaction }) => {
 
         const channel = interaction.member.voice.channel;
-        
+        const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
+    
         // Check if user is inside a voice channel
 		if (!channel) 
-            return interaction.reply("You need to be in a Voice Channel to pause a song.");
+            return ReplyControll.replyToInteractionWithMessage("You need to be in a Voice Channel to pause a song.",interaction,5000);
 
         
         // Create a play queue for the server(singleton)
@@ -24,11 +26,7 @@ module.exports = {
         const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId));
         
         if(!(guildQUEUE?.connection))
-            return interaction.reply("Bot is not connected to this channel.").then((reply)=>{
-                setTimeout(() => {
-                    reply.delete();
-                  }, 5000);
-        });
+            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,5000)
 
 
 

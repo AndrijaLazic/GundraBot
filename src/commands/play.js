@@ -1,8 +1,6 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
-let MusicMessageEmbed=new musicMessageEmbed();
-const {replyControll,replyControllSingleton} =require("../replyFolder/replyControll")
+const {replyControll} =require("../replyFolder/replyControll")
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -18,7 +16,7 @@ module.exports = {
 
         const channel = interaction.member.voice.channel;
         const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
-        
+
         // Check if user is inside a voice channel
 		if (!channel) 
             return interaction.reply("You need to be in a Voice Channel to play a song.");
@@ -63,14 +61,10 @@ module.exports = {
                 }
                 
                 
-                
-                
-                MusicMessageEmbed.fields[0].value=searchResult.tracks[0].title;
-                MusicMessageEmbed.image.url=searchResult.tracks[0].thumbnail;
+                MusicMessageEmbed=ReplyControll.songToEmbed(searchResult.tracks[0])
 
-                await ReplyControll.replyToInteractionWithEmbed({
-                    embeds: [MusicMessageEmbed]
-                })
+                await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction)
+                
             } catch (e) {
                 // let's return error if something failed
                 console.log(e)

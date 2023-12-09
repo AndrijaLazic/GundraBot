@@ -1,5 +1,6 @@
+const { Track } = require("discord-player");
 const {Guild}=require("discord.js")
-
+const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
 
 
 
@@ -11,14 +12,14 @@ class replyControllSingleton {
      */
     constructor(interaction) {
         this.interaction=interaction;
-        this.currentEmbed=null;
+        this.currentEmbed=new musicMessageEmbed();
     }
     
 
     /**
      * @param { (...args: ClientEvents[Event]) => Awaitable<void>} newInteraction -Interaction you want to reply to
      * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
-     * @param { String } reply- message/embed to send as a reply
+     * @param { string } reply- message/embed to send as a reply
      */
     async replyToInteractionWithEmbed(reply,newInteraction,timeToRemove=-1){
 
@@ -50,6 +51,7 @@ class replyControllSingleton {
         })
     }
 
+
     /**
      * @param { (...args: ClientEvents[Event]) => Awaitable<void>} newInteraction -Interaction you want to reply to
      * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
@@ -65,6 +67,20 @@ class replyControllSingleton {
               }, timeToRemove);
         })
     }
+
+
+    /**
+     * Creates embed from the song
+     * @param { Track } song-track from search
+     * @param { String } embed- message/embed to send as a reply
+     */
+    songToEmbed(song){
+        this.currentEmbed.fields[0].value=song.title;
+        this.currentEmbed.image.url=song.thumbnail;
+
+        console.log(song.thumbnail)
+        return this.currentEmbed;
+    } 
 
 
 }

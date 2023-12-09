@@ -4,7 +4,7 @@ const {Client,IntentsBitField,Collection}=require("discord.js")
 const {REST}=require("discord.js")
 const {Routes}=require("discord-api-types/v10")
 const {Player}=require("discord-player")
-const replyControll=require("../src/replyFolder/replyControll.js")
+const {replyControll}=require("../src/replyFolder/replyControll")
 
 const fs=require("node:fs")//allows you to work with the file system on your computer
 const path=require("node:path")
@@ -47,6 +47,7 @@ player.extractors.loadDefault();
 
 player.events.on('disconnect', (queue) => {
     // Emitted when the bot leaves the voice channel
+    console.log(replyControll)
     replyControll.resetInstance(queue.guild);
     console.log("Disconnected from guild:"+queue.guild)
 
