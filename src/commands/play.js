@@ -48,8 +48,10 @@ module.exports = {
         } else {
             try {
                 
-                if(!guildQUEUE.connection)
+                if(!guildQUEUE.connection){
                     await guildQUEUE.connect(channel);
+                }
+                    
                 
                 guildQUEUE.addTrack(searchResult.tracks[0])
 
@@ -63,7 +65,7 @@ module.exports = {
                 //await interaction.deleteReply();
                 // channel.send({ embeds: [musicEmbedMessage] });
                 
-                console.log(MusicMessageEmbed)
+                
                 MusicMessageEmbed.fields[0].value=searchResult.tracks[0].title;
                 MusicMessageEmbed.image.url=searchResult.tracks[0].thumbnail;
                 await interaction.reply({
