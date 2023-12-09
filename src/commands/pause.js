@@ -34,29 +34,15 @@ module.exports = {
             console.log(guildQUEUE.getSize())
             if(guildQUEUE.isPlaying() || !(guildQUEUE.isEmpty())){
                 guildQUEUE.node.pause();
-                return interaction.reply("Song paused").then((reply)=>{
-                    setTimeout(() => {
-                        reply.delete();
-                      }, 5000);
-                })
+                ReplyControll.replyToInteractionWithMessage("Song paused",interaction,5000);
             }
-            return interaction.reply("No song is playing").then((reply)=>{
-                setTimeout(() => {
-                    reply.delete();
-                  }, 5000);
-            })
+            ReplyControll.replyToInteractionWithMessage("No song is playing",interaction,5000);
                 
-            
-            
         }
         catch (e) {
             // let's return error if something failed
             console.log(e)
-            return interaction.reply(`Something went wrong: ${e}`).then((reply)=>{
-                setTimeout(() => {
-                    reply.delete();
-                  }, 5000);
-            })
+            ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`,interaction)
         }
 
 	},

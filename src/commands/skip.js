@@ -2,6 +2,7 @@ const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
 const embedMusicMessage  = require("../replyFolder/embedMessageTemplate")
 let musicEmbedMessage=new embedMusicMessage();
+const {replyControll} =require("../replyFolder/replyControll")
 
 
 module.exports = {
@@ -12,7 +13,8 @@ module.exports = {
 	execute: async ({ client, interaction }) => {
 
         const channel = interaction.member.voice.channel;
-        
+        const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
+
         // Check if user is inside a voice channel
 		if (!channel) 
             return interaction.reply("You need to be in a Voice Channel to skip a song.");
@@ -27,11 +29,8 @@ module.exports = {
         const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId));
         
         if(!(guildQUEUE?.connection))
-            return interaction.reply("Bot is not connected to this channel.").then((reply)=>{
-                setTimeout(() => {
-                    reply.delete();
-                  }, 5000);
-        });
+            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,5000)
+       
 
 
 
@@ -41,28 +40,16 @@ module.exports = {
                 guildQUEUE.node.skip();
             }
             else{
-                return interaction.reply("There are no songs to be skipped. Queue is empty.").then((reply)=>{
-                    setTimeout(() => {
-                        reply.delete();
-                      }, 5000);
-                })
+                return ReplyControll.replyToInteractionWithMessage("There are no songs to be skipped. Queue is empty.",interaction,5000)
             }
-                
-            return interaction.reply("Song removed from queue").then((reply)=>{
-                setTimeout(() => {
-                    reply.delete();
-                  }, 5000);
-            })
+            return ReplyControll.replyToInteractionWithMessage("Song removed from queue",interaction,5000)
+
             
         }
         catch (e) {
             // let's return error if something failed
             console.log(e)
-            return interaction.reply(`Something went wrong: ${e}`).then((reply)=>{
-                setTimeout(() => {
-                    reply.delete();
-                  }, 5000);
-            })
+            return ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`,interaction,5000)
         }
 
 	},
