@@ -1,69 +1,69 @@
 const {Guild}=require("discord.js")
-/**
- * @param { (...args: ClientEvents[Event]) => Awaitable<void>} interaction -Interaction you want to reply to
- * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
- * @param { String } reply- message/embed to send as a reply
- * @param { Guild } guild- message/embed to send as a reply
- */
+
 
 
 
 
 
 class replyControllSingleton {
-    constructor(interaction,) {
+    /**
+     * @param { (...args: ClientEvents[Event]) => Awaitable<void>} interaction -Interaction you want to reply to
+     */
+    constructor(interaction) {
         this.interaction=interaction;
-        this.alreadyReplied=false;
         this.currentEmbed=null;
     }
     
-    replyToInteractionWithEmbed(reply,timeToRemove=-1){
-        if(timeToRemove==-1){
-            if(this.alreadyReplied){
-                return this.interaction.editReply({
-                    embeds: [reply]
-                })
-            }
 
-            this.alreadyReplied=true;
-            return this.interaction.reply({
-                embeds: [reply]
-            })
-        }
+    /**
+     * @param { (...args: ClientEvents[Event]) => Awaitable<void>} newInteraction -Interaction you want to reply to
+     * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
+     * @param { String } reply- message/embed to send as a reply
+     */
+    async replyToInteractionWithEmbed(reply,newInteraction,timeToRemove=-1){
 
-        if(this.alreadyReplied){
-            return this.interaction.editReply({
+        if(timeToRemove!=-1){
+            return newInteraction.reply({
                 embeds: [reply]
             }).then((reply)=>{
                 setTimeout(() => {
                     reply.delete();
-                    this.alreadyReplied=false;
                   }, timeToRemove);
+            })
+
+        }
+
+        if(this.interaction.replied){
+            await this.interaction.editReply({
+                embeds: [reply]
+            })
+
+            return newInteraction.reply("Loading embed...").then((reply)=>{
+                setTimeout(() => {
+                    reply.delete();
+                }, 1);
             })
         }
 
-        return this.interaction.reply({
+        await this.interaction.reply({
             embeds: [reply]
-        }).then((reply)=>{
-            setTimeout(() => {
-                reply.delete();
-              }, timeToRemove);
-        })
-    }
-    
-    replyToInteractionWithMessage(reply,timeToRemove=-1){
-        if(timeToRemove==-1){
-            return this.interaction.reply(reply)
-        }
-        return this.interaction.reply(reply).then((reply)=>{
-            setTimeout(() => {
-                reply.delete();
-              }, timeToRemove);
         })
     }
 
-    getCurrentEmbed(){
-        return this.currentEmbed;
+    /**
+     * @param { (...args: ClientEvents[Event]) => Awaitable<void>} newInteraction -Interaction you want to reply to
+     * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
+     * @param { String } reply- message/embed to send as a reply
+     */
+    replyToInteractionWithMessage(reply,newInteraction,timeToRemove=-1){
+        if(timeToRemove==-1){
+            return newInteraction.reply(reply)
+        }
+        return newInteraction.reply(reply).then((reply)=>{
+            setTimeout(() => {
+                reply.delete();
+              }, timeToRemove);
+        })
     }
 
 
@@ -73,7 +73,16 @@ class replyControllSingleton {
 class replyControll {
     constructor() {
         throw new Error('Use replyControll.getInstance()');
-    }    
+    }
+    /**
+     *
+     *
+     * @static
+     * @param {*} guild
+     * @param {*} interaction
+     * @return {replyControllSingleton} 
+     * @memberof replyControll
+     */
     static getInstance(guild,interaction) {
         if (!guild.replyControllSingleton) {
             console.log("Created replyControllSingleton for:"+guild)
@@ -87,4 +96,4 @@ class replyControll {
 }
 
 
-module.exports = replyControll;
+module.exports = {replyControll,replyControllSingleton};

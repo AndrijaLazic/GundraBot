@@ -1,6 +1,6 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
-const replyControll =require("../replyFolder/replyControll.js")
+const {replyControll} =require("../replyFolder/replyControll")
 const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
 
 
@@ -16,8 +16,8 @@ module.exports = {
 
         try{
             const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
+            await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction);
             
-            ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed);
         }
         catch (e) {
             // let's return error if something failed

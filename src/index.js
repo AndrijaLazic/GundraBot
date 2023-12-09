@@ -86,9 +86,9 @@ client.on("interactionCreate", async interaction => {
 });
 
 
-client.on("messageCreate",(message)=>{
-    console.log(message.content)
-})
+// client.on("messageCreate",(message)=>{
+//     console.log(message.content)
+// })
 
 client.once('reconnecting', (message) => {
     console.log('Reconnecting!'+message);

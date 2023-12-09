@@ -2,6 +2,7 @@ const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
 const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
 let MusicMessageEmbed=new musicMessageEmbed();
+const {replyControll,replyControllSingleton} =require("../replyFolder/replyControll")
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -16,6 +17,7 @@ module.exports = {
 	execute: async ({ client, interaction }) => {
 
         const channel = interaction.member.voice.channel;
+        const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
         
         // Check if user is inside a voice channel
 		if (!channel) 
@@ -43,7 +45,7 @@ module.exports = {
 
         if (!searchResult.hasTracks()) {
             // If player didn't find any songs for this query
-            await interaction.reply(`Bad url, use valid url please.`);
+            await ReplyControll.replyToInteractionWithMessage(`Bad url, use valid url please.`,5000)
             return;
         } else {
             try {
@@ -62,13 +64,11 @@ module.exports = {
                 
                 
                 
-                //await interaction.deleteReply();
-                // channel.send({ embeds: [musicEmbedMessage] });
-                
                 
                 MusicMessageEmbed.fields[0].value=searchResult.tracks[0].title;
                 MusicMessageEmbed.image.url=searchResult.tracks[0].thumbnail;
-                await interaction.reply({
+
+                await ReplyControll.replyToInteractionWithEmbed({
                     embeds: [MusicMessageEmbed]
                 })
             } catch (e) {
