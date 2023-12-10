@@ -34,15 +34,15 @@ module.exports = {
             console.log(guildQUEUE.getSize())
             if(guildQUEUE.isPlaying() || !(guildQUEUE.isEmpty())){
                 guildQUEUE.node.pause();
-                ReplyControll.replyToInteractionWithMessage("Song paused",interaction,5000);
-            }
-            ReplyControll.replyToInteractionWithMessage("No song is playing",interaction,5000);
+                return ReplyControll.replyToInteractionWithMessage("Song paused",interaction,5000);
+            } 
+            return ReplyControll.replyToInteractionWithMessage("No song is playing",interaction,5000);
                 
         }
         catch (e) {
             // let's return error if something failed
             console.log(e)
-            ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`,interaction)
+            return ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`,interaction)
         }
 
 	},

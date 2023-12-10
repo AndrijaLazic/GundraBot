@@ -2,6 +2,7 @@ const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
 const {replyControll} =require("../replyFolder/replyControll")
 const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
+const {musicEmbedUI}  = require("../replyFolder/buttonsUI")
 
 
 module.exports = {
@@ -16,7 +17,7 @@ module.exports = {
 
         try{
             const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
-            await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction);
+            await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction,new musicEmbedUI());
             
         }
         catch (e) {

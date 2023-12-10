@@ -1,10 +1,7 @@
 const { Track } = require("discord-player");
 const {Guild}=require("discord.js")
 const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
-
-
-
-
+const musicEmbedUI=require("../replyFolder/buttonsUI")
 
 class replyControllSingleton {
     /**
@@ -20,13 +17,19 @@ class replyControllSingleton {
      * @param { (...args: ClientEvents[Event]) => Awaitable<void>} newInteraction -Interaction you want to reply to
      * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
      * @param { string } reply- message/embed to send as a reply
+     * @param { string } UIcomponent- UI component 
      */
-    async replyToInteractionWithEmbed(reply,newInteraction,timeToRemove=-1){
+    async replyToInteractionWithEmbed(reply,newInteraction,UIcomponent=null,timeToRemove=-1){
+
+        const replyObject={
+            embeds:[reply]
+        }
+        if(UIcomponent)
+            replyObject.components=[UIcomponent]
+
 
         if(timeToRemove!=-1){
-            return newInteraction.reply({
-                embeds: [reply]
-            }).then((reply)=>{
+            return newInteraction.reply(replyObject).then((reply)=>{
                 setTimeout(() => {
                     reply.delete();
                   }, timeToRemove);
@@ -35,9 +38,7 @@ class replyControllSingleton {
         }
 
         if(this.interaction.replied){
-            await this.interaction.editReply({
-                embeds: [reply]
-            })
+            await this.interaction.editReply(replyObject)
 
             return newInteraction.reply("Loading embed...").then((reply)=>{
                 setTimeout(() => {
@@ -46,9 +47,7 @@ class replyControllSingleton {
             })
         }
 
-        await this.interaction.reply({
-            embeds: [reply]
-        })
+        return this.interaction.reply(replyObject)
     }
 
 
@@ -77,10 +76,55 @@ class replyControllSingleton {
     songToEmbed(song){
         this.currentEmbed.fields[0].value=song.title;
         this.currentEmbed.image.url=song.thumbnail;
-
-        console.log(song.thumbnail)
         return this.currentEmbed;
     } 
+
+    /**
+     * Returns UI with buttons
+     * @returns {Partial<| ActionRowData<ActionRowComponentData | JSONEncodable<APIActionRowComponentTypes>>| APIActionRowComponent<APIMessageActionRowComponent | APIModalActionRowComponent>>}
+     */
+    getMusicUI(){
+        return musicEmbedUI();
+    } 
+
+
+
+    /**
+     * Executes button commands
+     */
+    buttonClick(interaction,client){
+        let customID=interaction.customId;
+
+        let commandName=null;
+
+        switch (customID) {
+            case 'skipButton':
+                commandName="skip";
+                break;
+        
+            case 'pauseButton':
+                commandName="pause";
+                break;
+        
+            case 'resumeButton':
+                commandName="resume";
+                break;
+        }
+
+        if(!commandName)
+            throw new Error('There is no button with that customId');
+        
+        let command=null
+        command = client.commands.get(commandName);
+
+        if(!command)
+            throw new Error('There is no command with name:'+commandName);
+
+        return command.execute({client, interaction})
+        
+
+
+    }
 
 
 }

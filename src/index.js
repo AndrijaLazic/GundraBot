@@ -47,7 +47,6 @@ player.extractors.loadDefault();
 
 player.events.on('disconnect', (queue) => {
     // Emitted when the bot leaves the voice channel
-    console.log(replyControll)
     replyControll.resetInstance(queue.guild);
     console.log("Disconnected from guild:"+queue.guild)
 
@@ -70,6 +69,22 @@ client.on("ready",(c)=>{
 
 
 client.on("interactionCreate", async interaction => {
+    const ReplyControll=replyControll.getInstance(client.guilds.cache.get(interaction.guildId),interaction);
+    
+
+    if(interaction.isButton()){
+        
+        try{
+            await ReplyControll.buttonClick(interaction,client);
+        }
+        catch(e){
+            console.log(e)
+            await interaction.reply({content: "There was an error executing this command"});
+        }
+        return  
+    }
+
+
     if(!interaction.isCommand()) return;
 
     const command = client.commands.get(interaction.commandName);

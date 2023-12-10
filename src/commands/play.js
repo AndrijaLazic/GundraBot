@@ -1,6 +1,7 @@
 const { EmbedBuilder ,SlashCommandBuilder } = require("discord.js")
 const { QueryType,useMainPlayer,GuildQueue  } = require("discord-player")
 const {replyControll} =require("../replyFolder/replyControll")
+const {musicEmbedUI}  = require("../replyFolder/buttonsUI")
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -63,7 +64,7 @@ module.exports = {
                 
                 MusicMessageEmbed=ReplyControll.songToEmbed(searchResult.tracks[0])
 
-                await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction)
+                await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction,new musicEmbedUI())
                 
             } catch (e) {
                 // let's return error if something failed
