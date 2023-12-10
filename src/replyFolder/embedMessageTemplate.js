@@ -14,27 +14,27 @@ class musicMessageEmbed{
 				{
 					name: 'Now playing:',
 					value: 'Some value here',
-				},
-				{
-					name: '\u200b',
-					value: '\u200b',
-					inline: false,
-				},
-				{
-					name: 'Inline field title',
-					value: 'Some value here',
-					inline: true,
-				},
-				{
-					name: 'Inline field title',
-					value: 'Some value here',
-					inline: true,
-				},
-				{
-					name: 'Inline field title',
-					value: 'Some value here',
-					inline: true,
-				},
+				}
+				// {
+				// 	name: '\u200b',
+				// 	value: '\u200b',
+				// 	inline: false,
+				// },
+				// {
+				// 	name: 'Inline field title',
+				// 	value: 'Some value here',
+				// 	inline: true,
+				// },
+				// {
+				// 	name: 'Inline field title',
+				// 	value: 'Some value here',
+				// 	inline: true,
+				// },
+				// {
+				// 	name: 'Inline field title',
+				// 	value: 'Some value here',
+				// 	inline: true,
+				// },
 			],
 			image:{
 				url:'https://i.imgur.com/AfFp7pu.png'
