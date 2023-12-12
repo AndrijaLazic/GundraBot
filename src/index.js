@@ -51,6 +51,7 @@ player.events.on('disconnect', (queue) => {
     console.log("Disconnected from guild:"+queue.guild)
 });
 
+
 player.events.on("playerStart",(event)=>{
     let ReplyControll=replyControll.getInstance(event.guild)
     try{

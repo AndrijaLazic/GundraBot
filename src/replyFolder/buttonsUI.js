@@ -19,13 +19,19 @@ class musicEmbedUI{
 			.setStyle(ButtonStyle.Secondary)
             .setEmoji("▶️")
 
+    static exitButton = new ButtonBuilder()
+			.setCustomId('exitButton')
+			.setLabel('Exit')
+			.setStyle(ButtonStyle.Danger)
+            .setEmoji("⏹️")
+
 
     /**
      * Returns UI components
      */        
     constructor(){
         return new ActionRowBuilder()
-			.addComponents(musicEmbedUI.skipButton,musicEmbedUI.pauseButton, musicEmbedUI.resumeButton);
+			.addComponents(musicEmbedUI.skipButton,musicEmbedUI.pauseButton, musicEmbedUI.resumeButton,musicEmbedUI.exitButton);
     }
 
 }

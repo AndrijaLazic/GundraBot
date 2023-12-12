@@ -1,7 +1,8 @@
-const { Track } = require("discord-player");
+const { Track,useMainPlayer } = require("discord-player");
 const {Guild}=require("discord.js")
 const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
 const {musicEmbedUI}=require("../replyFolder/buttonsUI")
+
 
 class replyControllSingleton {
     /**
@@ -87,6 +88,28 @@ class replyControllSingleton {
         return musicEmbedUI();
     } 
 
+    /**
+     * Remove embed
+     */
+    removeCurrentEmbed(){
+        if(this.interaction){
+            this.interaction.deleteReply()
+        }
+    } 
+
+    /**
+     * Exit voice channel
+     */
+    exitChanell(client,interaction){
+        const player = useMainPlayer();
+        const guildNodeMenager=player.queues;
+        const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId))
+        if(guildQUEUE && guildQUEUE.connection){
+            if(guildQUEUE.connection.disconnect())
+                player.events.emit("disconnect",guildQUEUE)
+        }
+    }
+
 
 
     /**
@@ -109,6 +132,10 @@ class replyControllSingleton {
             case 'resumeButton':
                 commandName="resume";
                 break;
+            case 'exitButton':
+                this.replyToInteractionWithMessage("Exiting...",interaction,1000)
+                this.exitChanell(client,interaction)
+                return;
         }
 
         if(!commandName)
@@ -173,7 +200,10 @@ class replyControll {
         }
         return guild.replyControllSingleton;
     }
-    static resetInstance(guild){
+    static async resetInstance(guild){
+        if(guild.replyControllSingleton){
+            await guild.replyControllSingleton.removeCurrentEmbed();
+        }
         guild.replyControllSingleton=null;
     }
 }
