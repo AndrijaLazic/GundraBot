@@ -26,20 +26,20 @@ module.exports = {
         const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId));
         
         if(!(guildQUEUE?.connection))
-            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,5000);
+            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,3000);
         
 
 
 
         try{
             if(!guildQUEUE.isPlaying()){
-                return ReplyControll.replyToInteractionWithMessage("There is no song to resume",interaction,5000)
+                return ReplyControll.replyToInteractionWithMessage("There is no song to resume",interaction,3000)
             }
             if(guildQUEUE.node.isPaused()){
                 guildQUEUE.node.resume();
-                return ReplyControll.replyToInteractionWithMessage("Song resumed",interaction,5000)
+                return ReplyControll.replyToInteractionWithMessage("Song resumed",interaction,3000)
             }
-            return ReplyControll.replyToInteractionWithMessage("Song is already playing",interaction,5000)
+            return ReplyControll.replyToInteractionWithMessage("Song is already playing",interaction,3000)
                 
             
             
@@ -47,7 +47,7 @@ module.exports = {
         catch (e) {
             // let's return error if something failed
             console.log(e)
-            return ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`,interaction,5000)
+            return ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`,interaction,3000)
         }
 
 	},

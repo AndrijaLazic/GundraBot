@@ -29,7 +29,7 @@ module.exports = {
         const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId));
         
         if(!(guildQUEUE?.connection))
-            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,5000)
+            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,3000)
        
 
 
@@ -40,9 +40,9 @@ module.exports = {
                 guildQUEUE.node.skip();
             }
             else{
-                return ReplyControll.replyToInteractionWithMessage("There are no songs to be skipped. Queue is empty.",interaction,5000)
+                return ReplyControll.replyToInteractionWithMessage("There are no songs to be skipped. Queue is empty.",interaction,3000)
             }
-            return ReplyControll.replyToInteractionWithMessage("Song removed from queue",interaction,5000)
+            return ReplyControll.replyToInteractionWithMessage("Song removed from queue",interaction,3000)
 
             
         }

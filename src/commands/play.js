@@ -56,15 +56,14 @@ module.exports = {
                 
                 guildQUEUE.addTrack(searchResult.tracks[0])
 
-                
+                MusicMessageEmbed=ReplyControll.songToEmbed(searchResult.tracks[0])
+                await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction,new musicEmbedUI())
                 if(!guildQUEUE.isPlaying()){
                     await guildQUEUE.node.play();
                 }
                 
                 
-                MusicMessageEmbed=ReplyControll.songToEmbed(searchResult.tracks[0])
-
-                await ReplyControll.replyToInteractionWithEmbed(MusicMessageEmbed,interaction,new musicEmbedUI())
+                
                 
             } catch (e) {
                 // let's return error if something failed

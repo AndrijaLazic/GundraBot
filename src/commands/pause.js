@@ -14,7 +14,7 @@ module.exports = {
     
         // Check if user is inside a voice channel
 		if (!channel) 
-            return ReplyControll.replyToInteractionWithMessage("You need to be in a Voice Channel to pause a song.",interaction,5000);
+            return ReplyControll.replyToInteractionWithMessage("You need to be in a Voice Channel to pause a song.",interaction,3000);
 
         
         // Create a play queue for the server(singleton)
@@ -26,7 +26,7 @@ module.exports = {
         const guildQUEUE=guildNodeMenager.get(client.guilds.cache.get(interaction.guildId));
         
         if(!(guildQUEUE?.connection))
-            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,5000)
+            return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.",interaction,3000)
 
 
 
@@ -34,9 +34,9 @@ module.exports = {
             console.log(guildQUEUE.getSize())
             if(guildQUEUE.isPlaying() || !(guildQUEUE.isEmpty())){
                 guildQUEUE.node.pause();
-                return ReplyControll.replyToInteractionWithMessage("Song paused",interaction,5000);
+                return ReplyControll.replyToInteractionWithMessage("Song paused",interaction,3000);
             } 
-            return ReplyControll.replyToInteractionWithMessage("No song is playing",interaction,5000);
+            return ReplyControll.replyToInteractionWithMessage("No song is playing",interaction,3000);
                 
         }
         catch (e) {

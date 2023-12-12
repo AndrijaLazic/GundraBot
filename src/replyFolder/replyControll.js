@@ -1,7 +1,7 @@
 const { Track } = require("discord-player");
 const {Guild}=require("discord.js")
 const musicMessageEmbed  = require("../replyFolder/embedMessageTemplate")
-const musicEmbedUI=require("../replyFolder/buttonsUI")
+const {musicEmbedUI}=require("../replyFolder/buttonsUI")
 
 class replyControllSingleton {
     /**
@@ -12,13 +12,13 @@ class replyControllSingleton {
         this.currentEmbed=new musicMessageEmbed();
     }
     
-
     /**
      * @param { (...args: ClientEvents[Event]) => Awaitable<void>} newInteraction -Interaction you want to reply to
      * @param { Number } timeToRemove-time in milliseconds after which reply will be removed
      * @param { string } reply- message/embed to send as a reply
      * @param { string } UIcomponent- UI component 
      */
+
     async replyToInteractionWithEmbed(reply,newInteraction,UIcomponent=null,timeToRemove=-1){
 
         const replyObject={
@@ -38,12 +38,12 @@ class replyControllSingleton {
         }
 
         if(this.interaction.replied){
-            await this.interaction.editReply(replyObject)
+            //await this.interaction.editReply(replyObject)
 
-            return newInteraction.reply("Loading embed...").then((reply)=>{
+            return newInteraction.reply("Loading "+reply.fields[0].value).then((reply)=>{
                 setTimeout(() => {
                     reply.delete();
-                }, 1);
+                }, 2000);
             })
         }
 
@@ -122,7 +122,30 @@ class replyControllSingleton {
 
         return command.execute({client, interaction})
         
+    }
 
+
+    /**
+     * Update current embed with 
+     * @param {Track} song
+     */
+    updateCurrentEmbedWithSong(song){
+        if(!this.interaction){
+            throw new Error('There is no interaction to update');
+        }
+
+        if(!this.interaction.replied){
+            throw new Error('Cant update interaction if you dont reply to it first');
+        }
+
+        
+        let MusicMessageEmbed=this.songToEmbed(song);
+        const replyObject={
+            embeds:[MusicMessageEmbed]
+        }
+        replyObject.components=[new musicEmbedUI()]
+        this.interaction.editReply(replyObject)    
+        return
 
     }
 
@@ -143,7 +166,7 @@ class replyControll {
      * @return {replyControllSingleton} 
      * @memberof replyControll
      */
-    static getInstance(guild,interaction) {
+    static getInstance(guild,interaction=null) {
         if (!guild.replyControllSingleton) {
             console.log("Created replyControllSingleton for:"+guild)
             guild.replyControllSingleton = new replyControllSingleton(interaction);
