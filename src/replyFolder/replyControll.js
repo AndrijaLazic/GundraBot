@@ -76,7 +76,7 @@ class replyControllSingleton {
      */
     songToEmbed(song){
         this.currentEmbed.fields[0].value=song.title;
-        this.currentEmbed.image.url=song.thumbnail;
+        this.currentEmbed.image.url=song.raw.thumbnail.url;
         return this.currentEmbed;
     } 
 
