@@ -1,0 +1,18 @@
+# Use official Node.js image
+FROM node:20-slim
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install dependencies (only package.json and lock file first for caching)
+COPY package*.json ./
+
+# Install dependencies (including native ones like @discordjs/opus)
+RUN apt-get update && apt-get install -y \
+    python3 make g++ ffmpeg git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install
+
+# Run the bot
+# CMD ["node", "src/index.js"]

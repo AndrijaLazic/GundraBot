@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  gundrabot:
+    build:
+      context: ..                 # send project root to Docker
+      dockerfile: docker/dockerfile
+    container_name: gundrabot
+    # restart: unless-stopped
+    volumes:
+    - ..:/usr/src/app          # mount your source
+    - /usr/src/app/node_modules # keep container node_modules
+
+    command: sleep infinity
