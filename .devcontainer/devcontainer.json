@@ -34,7 +34,10 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				
+				"christian-kohler.path-intellisense",
+				"leizongmin.node-module-intellisense",
+				"christian-kohler.npm-intellisense",
+				"yoavbls.pretty-ts-errors"
 			]
 		}
 	}
