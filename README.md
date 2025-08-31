@@ -24,6 +24,8 @@ This will open a config file and you will need to add following "msvs-version=20
 
 ```bash
   nodemon src/index.js
+  OR 
+  node src/index.js
 ```
     
 5. Have fun 😃 

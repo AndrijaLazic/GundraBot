@@ -37,7 +37,8 @@
 				"christian-kohler.path-intellisense",
 				"leizongmin.node-module-intellisense",
 				"christian-kohler.npm-intellisense",
-				"yoavbls.pretty-ts-errors"
+				"yoavbls.pretty-ts-errors",
+				"dbaeumer.vscode-eslint"
 			]
 		}
 	}
