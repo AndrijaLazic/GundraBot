@@ -23,9 +23,9 @@ This will open a config file and you will need to add following "msvs-version=20
 4. To start application open terminal and enter:  
 
 ```bash
-  nodemon src/index.js
+  nodemon src/index.ts
   OR 
-  node src/index.js
+  node src/index.ts
 ```
     
 5. Have fun 😃 
