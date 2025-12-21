@@ -1,13 +1,24 @@
-import type { ButtonInteraction, ChatInputCommandInteraction, Client, SlashCommandBuilder } from "discord.js";
+import type {
+  ButtonInteraction,
+  ChatInputCommandInteraction,
+  Client,
+  SlashCommandBuilder,
+} from "discord.js";
 
-export type BotInteraction = ChatInputCommandInteraction<"cached"> | ButtonInteraction<"cached">;
+export type BotInteraction =
+  | ChatInputCommandInteraction<"cached">
+  | ButtonInteraction<"cached">;
 
-export type CommandExecuteArgs = {
-  client: Client;
-  interaction: BotInteraction;
-};
+export class CommandExecuteArgs {
+  constructor(
+    public readonly client: Client,
+    public readonly interaction: BotInteraction
+  ) {}
+}
 
-export interface CommandModule {
-  data: SlashCommandBuilder;
-  execute: (args: CommandExecuteArgs) => Promise<unknown>;
+
+export abstract class CommandModule {
+  public abstract readonly data: SlashCommandBuilder;
+
+  public abstract execute(args: CommandExecuteArgs): Promise<unknown>;
 }

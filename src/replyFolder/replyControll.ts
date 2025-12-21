@@ -15,8 +15,57 @@ class ReplyControllSingleton {
   private interaction: BotInteraction | null;
   private currentEmbed = createMusicMessageEmbed();
 
+  // async mutex state
+  private lockTail: Promise<void> = Promise.resolve();
+  private closed = false;
+
   constructor(interaction: BotInteraction | null) {
     this.interaction = interaction;
+  }
+
+  setInteraction(interaction: BotInteraction | null) {
+    // allow updating the active interaction when you get a new one
+    this.interaction = interaction;
+  }
+
+
+  //Higher-order function for locking
+  private async withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = this.lockTail;
+
+    let release!: () => void;
+    this.lockTail = new Promise<void>(r => (release = r));
+
+    await prev;
+    try {
+      if (this.closed) {
+        throw new Error("ReplyControllSingleton is closed/reset.");
+      }
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+
+  private async removeCurrentEmbedUnsafe() {
+    if (this.interaction?.replied) {
+      try {
+        await this.interaction.deleteReply();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
+  /**
+   * Called by resetInstance(). Runs under lock, removes embed, then closes the instance.
+   */
+  async shutdown() {
+    return this.withLock(async () => {
+      await this.removeCurrentEmbedUnsafe();
+      this.interaction = null;
+      this.closed = true;
+    });
   }
 
   async replyToInteractionWithEmbed(
@@ -25,51 +74,60 @@ class ReplyControllSingleton {
     UIcomponent: musicEmbedUI | null = null,
     timeToRemove = -1
   ) {
-    const replyObject = {
-      embeds: [reply],
-      components: UIcomponent ? [UIcomponent] : undefined
-    };
+    return this.withLock(async () => {
+      const replyObject = {
+        embeds: [reply],
+        components: UIcomponent ? [UIcomponent] : undefined
+      };
 
-    if (timeToRemove !== -1) {
-      return newInteraction.reply(replyObject).then(sentReply => {
+      if (timeToRemove !== -1) {
+        const sentReply = await newInteraction.reply(replyObject);
         setTimeout(() => {
-          sentReply.delete();
+          // prevent unhandled rejection if message is already gone
+          sentReply.delete().catch(() => {});
         }, timeToRemove);
-      });
-    }
+        return;
+      }
 
-    if (this.interaction?.replied) {
-      const loadingMessage = `Loading ${reply.fields?.[0]?.value ?? ""}`;
-      return newInteraction.reply(loadingMessage).then(sentReply => {
+      if (this.interaction?.replied) {
+        const loadingMessage = `Loading ${reply.fields?.[0]?.value ?? ""}`;
+        const sentReply = await newInteraction.reply(loadingMessage);
         setTimeout(() => {
-          sentReply.delete();
+          sentReply.delete().catch(() => {});
         }, 2000);
-      });
-    }
+        return;
+      }
 
-    if (!this.interaction) {
-      throw new Error("There is no interaction to reply to.");
-    }
+      if (!this.interaction) {
+        throw new Error("There is no interaction to reply to.");
+      }
 
-    return this.interaction.reply(replyObject);
+      return this.interaction.reply(replyObject);
+    });
   }
 
-  replyToInteractionWithMessage(reply: string, newInteraction: RepliableInteraction, timeToRemove = -1) {
-    if (timeToRemove === -1) {
-      return newInteraction.reply(reply);
-    }
+  replyToInteractionWithMessage(
+    reply: string,
+    newInteraction: RepliableInteraction,
+    timeToRemove = -1
+  ) {
+    // Keep as non-async API, but still serialize via lock.
+    return this.withLock(async () => {
+      const sentReply = await newInteraction.reply(reply);
 
-    return newInteraction.reply(reply).then(sentReply => {
-      setTimeout(() => {
-        sentReply.delete();
-      }, timeToRemove);
+      if (timeToRemove !== -1) {
+        setTimeout(() => {
+          sentReply.delete().catch(() => {});
+        }, timeToRemove);
+      }
+
+      return sentReply;
     });
   }
 
   songToEmbed(song: Track) {
-    if (!this.currentEmbed.fields) {
-      this.currentEmbed.fields = [];
-    }
+    // This is synchronous; it will be called from locked methods below.
+    if (!this.currentEmbed.fields) this.currentEmbed.fields = [];
 
     if (!this.currentEmbed.fields[0]) {
       this.currentEmbed.fields[0] = { name: "Now playing:", value: song.title };
@@ -79,6 +137,7 @@ class ReplyControllSingleton {
 
     const thumbnailUrl = (song.raw as Record<string, any>)?.thumbnail?.url ?? "";
     this.currentEmbed.image = { url: thumbnailUrl };
+
     return this.currentEmbed;
   }
 
@@ -87,20 +146,17 @@ class ReplyControllSingleton {
   }
 
   async removeCurrentEmbed() {
-    if (this.interaction?.replied) {
-      try {
-        await this.interaction.deleteReply();
-      } catch (err) {
-        // Swallow failures caused by missing reply context
-        console.error(err);
-      }
-    }
+    return this.withLock(async () => {
+      await this.removeCurrentEmbedUnsafe();
+    });
   }
 
   exitChanell(client: BotClient, interaction: BotInteraction) {
     const player = useMainPlayer();
     const guildNodeManager = player.queues;
-    const guildQueue = interaction.guildId ? guildNodeManager.get(client.guilds.cache.get(interaction.guildId) as Guild) : null;
+    const guildQueue = interaction.guildId
+      ? guildNodeManager.get(client.guilds.cache.get(interaction.guildId) as Guild)
+      : null;
 
     if (guildQueue?.connection) {
       if (guildQueue.connection.disconnect()) {
@@ -130,37 +186,32 @@ class ReplyControllSingleton {
         break;
     }
 
-    if (!commandName) {
-      throw new Error("There is no button with that customId");
-    }
+    if (!commandName) throw new Error("There is no button with that customId");
 
     const command = client.commands.get(commandName);
+    if (!command) throw new Error(`There is no command with name: ${commandName}`);
 
-    if (!command) {
-      throw new Error(`There is no command with name: ${commandName}`);
-    }
-
+    // IMPORTANT: do NOT lock around command.execute() to avoid deadlocks
+    // if command.execute() calls back into ReplyControllSingleton methods.
     return command.execute({ client, interaction });
   }
 
   updateCurrentEmbedWithSong(song: Track) {
-    if (!this.interaction) {
-      throw new Error("There is no interaction to update");
-    }
+    return this.withLock(async () => {
+      if (!this.interaction) throw new Error("There is no interaction to update");
+      if (!this.interaction.replied) throw new Error("Cannot update interaction before replying to it");
 
-    if (!this.interaction.replied) {
-      throw new Error("Cannot update interaction before replying to it");
-    }
+      const musicMessageEmbed = this.songToEmbed(song);
+      const replyObject = {
+        embeds: [musicMessageEmbed],
+        components: [new musicEmbedUI()]
+      };
 
-    const musicMessageEmbed = this.songToEmbed(song);
-    const replyObject = {
-      embeds: [musicMessageEmbed],
-      components: [new musicEmbedUI()]
-    };
-
-    return this.interaction.editReply(replyObject);
+      return this.interaction.editReply(replyObject);
+    });
   }
 }
+
 
 class ReplyControll {
   constructor() {
@@ -168,18 +219,29 @@ class ReplyControll {
   }
 
   static getInstance(guild: Guild, interaction: BotInteraction | null = null) {
-    if (!guild.replyControllSingleton) {
-      guild.replyControllSingleton = new ReplyControllSingleton(interaction);
+    let inst = guild.replyControllSingleton;
+
+    if (!inst) {
+      inst = new ReplyControllSingleton(interaction);
+      guild.replyControllSingleton = inst;
+    } else if (interaction) {
+      inst.setInteraction(interaction);
     }
-    return guild.replyControllSingleton;
+
+    return inst;
   }
 
   static async resetInstance(guild: Guild) {
-    if (guild.replyControllSingleton) {
-      await guild.replyControllSingleton.removeCurrentEmbed();
-    }
+    const inst = guild.replyControllSingleton ?? null;
+
+    // Detach first so a new getInstance() won't get wiped later.
     guild.replyControllSingleton = null;
+
+    if (inst) {
+      await inst.shutdown();
+    }
   }
 }
+
 
 export { ReplyControll as replyControll, ReplyControllSingleton };
