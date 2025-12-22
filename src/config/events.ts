@@ -18,6 +18,8 @@ export function registerPlayerEvents(player: Player) {
       console.log(e);
     }
   });
+
+  player.events.on("error", e => console.error("PLAYER ERROR", e));
 }
 
 export function registerClientEvents(client: BotClient, token: string, clientId: string) {

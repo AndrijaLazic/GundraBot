@@ -12,7 +12,7 @@ export function createPlayer(client: BotClient) {
   });
 
   player.extractors.loadMulti(DefaultExtractors);
-  player.extractors.register(YoutubeiExtractor, {});
+  // player.extractors.register(YoutubeiExtractor, {});
 
   return player;
 }

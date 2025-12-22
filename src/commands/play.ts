@@ -1,8 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
-import { useMainPlayer } from "discord-player";
 import { replyControll } from "../replyFolder/replyControll.js";
-import { musicEmbedUI } from "../replyFolder/buttonsUI.js";
 import type { CommandModule } from "../types/command.js";
+import { musicManager } from "../music/MusicManager.js";
 
 const play: CommandModule = {
   data: new SlashCommandBuilder()
@@ -12,9 +11,15 @@ const play: CommandModule = {
       subcommand
         .setName("url")
         .setDescription("Plays a single song from youtube url")
-        .addStringOption(option => option.setName("url").setDescription("the song's url").setRequired(true))
+        .addStringOption(option =>
+          option
+            .setName("url")
+            .setDescription("the song's url")
+            .setRequired(true)
+        )
     ),
-  execute: async ({ client, interaction }) => {
+
+  execute: async ({ interaction }) => {
     if (!interaction.isChatInputCommand() || !interaction.inCachedGuild()) {
       return;
     }
@@ -26,48 +31,40 @@ const play: CommandModule = {
       return interaction.reply("You need to be in a Voice Channel to play a song.");
     }
 
-    const player = useMainPlayer();
     const query = interaction.options.getString("url", true);
-    const parsedUrl = new URL(query);
 
-    if (parsedUrl.hostname && !(parsedUrl.hostname.includes("youtube.com") || parsedUrl.hostname.includes("youtu.be"))) {
+    // Validate URL (avoid new URL() throwing)
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(query);
+    } catch {
+      return ReplyControll.replyToInteractionWithMessage("Invalid URL. Paste a full YouTube URL.", interaction, 3000);
+    }
+
+    const host = parsedUrl.hostname.toLowerCase();
+    const isYoutube = host.includes("youtube.com") || host.includes("youtu.be");
+
+    if (!isYoutube) {
       return ReplyControll.replyToInteractionWithMessage("You can only use YOUTUBE as a source", interaction, 3000);
     }
 
-    const searchResult = await player.search(query, { requestedBy: interaction.user });
-
-    const guildNodeManager = player.queues;
-    const guildQueue = guildNodeManager.create(interaction.guild, {
-      leaveOnStop: false,
-      leaveOnEmpty: true,
-      leaveOnEmptyCooldown: 30000,
-      leaveOnEnd: true,
-      leaveOnEndCooldown: 30000,
-      pauseOnEmpty: true
-    });
-
-    if (!searchResult.hasTracks()) {
-      await ReplyControll.replyToInteractionWithMessage("Bad url, use valid url please.", interaction, 3000);
-      return;
-    }
+    // Reply fast, then do the heavy work
+    await ReplyControll.replyToInteractionWithMessage("Loading…", interaction);
 
     try {
-      if (!guildQueue.connection) {
-        await guildQueue.connect(channel);
-      }
+      const track = await musicManager.enqueueFromQuery({
+        guild: interaction.guild,
+        voiceChannel: channel,
+        queryOrUrl: query,
+        requestedBy: interaction.user.tag
+      });
 
-      const track = searchResult.tracks[0];
-      guildQueue.addTrack(track);
-
-      const musicMessageEmbed = ReplyControll.songToEmbed(track);
-      await ReplyControll.replyToInteractionWithEmbed(musicMessageEmbed, interaction, new musicEmbedUI());
-
-      if (!guildQueue.isPlaying()) {
-        await guildQueue.node.play();
-      }
+      // Don’t set “Now playing” here (might already be playing something).
+      // Let your trackStart event update the embed when it actually starts.
+      await interaction.editReply(`Queued: **${track.title}**`);
     } catch (e) {
       console.log(e);
-      return interaction.reply(`Something went wrong: ${e}`);
+      await interaction.editReply("Something went wrong while loading that track.");
     }
   }
 };
