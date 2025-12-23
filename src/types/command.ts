@@ -3,22 +3,19 @@ import type {
   ChatInputCommandInteraction,
   Client,
   SlashCommandBuilder,
+  SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 
 export type BotInteraction =
   | ChatInputCommandInteraction<"cached">
   | ButtonInteraction<"cached">;
 
-export class CommandExecuteArgs {
-  constructor(
-    public readonly client: Client,
-    public readonly interaction: BotInteraction
-  ) {}
-}
+export type CommandExecuteArgs = {
+  client: Client;
+  interaction: BotInteraction;
+};
 
-
-export abstract class CommandModule {
-  public abstract readonly data: SlashCommandBuilder;
-
-  public abstract execute(args: CommandExecuteArgs): Promise<unknown>;
-}
+export type CommandModule = {
+  readonly data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
+  execute(args: CommandExecuteArgs): Promise<unknown>;
+};

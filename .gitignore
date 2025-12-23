@@ -131,3 +131,5 @@ dist
 
 
 .env
+
+/secrets/yt-cookies.txt

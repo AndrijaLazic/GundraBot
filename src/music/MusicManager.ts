@@ -1,4 +1,3 @@
-// src/music/MusicManager.ts
 import { EventEmitter } from "node:events";
 import youtubedl from "youtube-dl-exec";
 import prism from "prism-media";
@@ -15,6 +14,7 @@ import {
   type VoiceConnection
 } from "@discordjs/voice";
 import type { Guild, VoiceBasedChannel } from "discord.js";
+import type { GuildLock } from "../guild/ServerGuildManager.js";
 
 export type TrackInfo = {
   title: string;
@@ -33,46 +33,15 @@ type MusicEvents = {
   error: (guildId: string, err: unknown) => void;
 };
 
-class GuildLock {
-  private tail: Promise<void> = Promise.resolve();
-  private closed = false;
-
-  close() {
-    this.closed = true;
-  }
-
-  async withLock<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = this.tail;
-
-    let release!: () => void;
-    this.tail = new Promise<void>(r => (release = r));
-
-    await prev;
-    try {
-      if (this.closed) throw new Error("GuildLock is closed.");
-      return await fn();
-    } finally {
-      release();
-    }
-  }
-}
-
-class GuildMusicState {
-  readonly lock = new GuildLock();
-  connection: VoiceConnection | null = null;
-  player: AudioPlayer;
-  queue: TrackInfo[] = [];
-  nowPlaying: TrackInfo | null = null;
-
-  constructor() {
-    this.player = createAudioPlayer({
-      behaviors: { noSubscriber: NoSubscriberBehavior.Pause }
-    });
-  }
-}
-
 export class MusicManager extends EventEmitter {
-  private states = new Map<string, GuildMusicState>();
+  private lock: GuildLock;
+  private connection: VoiceConnection | null = null;
+  private player: AudioPlayer;
+  private queue: TrackInfo[] = [];
+  private nowPlaying: TrackInfo | null = null;
+  private cookiesPath = process.env.YTDLP_COOKIES;
+  private guild: Guild;
+  private shuttingDown = false;
 
   /**
    * If TRUE: stream is `yt-dlp -> stdout -> ffmpeg -> opus/ogg -> discord`
@@ -85,152 +54,157 @@ export class MusicManager extends EventEmitter {
    */
   private readonly YTDLP_FORMAT = "bestaudio[acodec=opus]/bestaudio/best";
 
-  private state(guildId: string): GuildMusicState {
-    let s = this.states.get(guildId);
-    if (!s) {
-      s = new GuildMusicState();
-      this.states.set(guildId, s);
+  constructor(guild: Guild, lock: GuildLock) {
+    super();
+    this.guild = guild;
+    this.lock = lock;
 
-      s.player.on("stateChange", (o, n) => {
-        // Useful while debugging stutter/end
-        // console.log("[PLAYER]", guildId, o.status, "->", n.status);
-        if (n.status === AudioPlayerStatus.Idle) {
-          void this.playNext(guildId);
-        }
-      });
+    this.player = createAudioPlayer({
+      behaviors: { noSubscriber: NoSubscriberBehavior.Pause }
+    });
 
-      s.player.on("error", err => {
-        this.emit("error", guildId, err);
-        void this.playNext(guildId);
-      });
-    }
-    return s;
+    this.player.on("stateChange", (_oldState, newState) => {
+      if (this.shuttingDown)
+        return;
+      
+      if (newState.status === AudioPlayerStatus.Idle) {
+        void this.playNext();
+      }
+    });
+
+    this.player.on("error", err => {
+      this.emit("error", this.guild.id, err);
+      void this.playNext();
+    });
   }
 
   async enqueueFromQuery(args: {
-    guild: Guild;
     voiceChannel: VoiceBasedChannel;
     queryOrUrl: string;
     requestedBy?: string;
   }): Promise<TrackInfo> {
-    const { guild, voiceChannel, queryOrUrl, requestedBy } = args;
-    const s = this.state(guild.id);
+    const { voiceChannel, queryOrUrl, requestedBy } = args;
 
-    return s.lock.withLock(async () => {
-      await this.ensureConnected(guild, voiceChannel);
+    return this.lock.withLock(async () => {
+      await this.ensureConnected(voiceChannel);
 
       const track = await this.resolveWithYtDlp(queryOrUrl, requestedBy);
-      s.queue.push(track);
+      this.queue.push(track);
 
-      if (!s.nowPlaying) {
-        void this.playNext(guild.id);
+      if (!this.nowPlaying) {
+        void this.playNext();
       }
 
       return track;
     });
   }
 
-  async skip(guildId: string) {
-    const s = this.states.get(guildId);
-    if (!s) return;
-
-    await s.lock.withLock(async () => {
-      s.player.stop(true);
+  async skip() {
+    await this.lock.withLock(async () => {
+      this.player.stop(true);
     });
   }
 
-  async pause(guildId: string) {
-    const s = this.states.get(guildId);
-    if (!s) return;
-
-    await s.lock.withLock(async () => {
-      s.player.pause(true);
+  async pause() {
+    await this.lock.withLock(async () => {
+      this.player.pause(true);
     });
   }
 
-  async resume(guildId: string) {
-    const s = this.states.get(guildId);
-    if (!s) return;
-
-    await s.lock.withLock(async () => {
-      s.player.unpause();
+  async resume() {
+    await this.lock.withLock(async () => {
+      this.player.unpause();
     });
   }
 
-  async leave(guildId: string) {
-    const s = this.states.get(guildId);
-    if (!s) return;
-
-    await s.lock.withLock(async () => {
-      s.queue = [];
-      s.nowPlaying = null;
+  async leave() {
+    await this.lock.withLock(async () => {
+      this.queue = [];
+      this.nowPlaying = null;
+      this.shuttingDown = true;
 
       try {
-        s.player.stop(true);
+        this.player.stop(true);
       } catch {}
 
-      if (s.connection) {
+      if (this.connection) {
         try {
-          s.connection.destroy();
+          this.connection.destroy();
         } catch {}
-        s.connection = null;
+        this.connection = null;
       }
 
-      s.lock.close();
-      this.states.delete(guildId);
-
-      this.emit("disconnect", guildId);
+      this.lock.close();
+      this.emit("disconnect", this.guild.id);
     });
   }
 
-  private async ensureConnected(guild: Guild, voiceChannel: VoiceBasedChannel) {
-    const s = this.state(guild.id);
-
-    if (s.connection) {
-      s.connection.subscribe(s.player);
+  private async ensureConnected(voiceChannel: VoiceBasedChannel) {
+    if (this.connection) {
+      this.connection.subscribe(this.player);
       return;
     }
 
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
-      guildId: guild.id,
-      adapterCreator: guild.voiceAdapterCreator
+      guildId: this.guild.id,
+      adapterCreator: this.guild.voiceAdapterCreator
     });
 
-    s.connection = connection;
-    connection.subscribe(s.player);
+    this.connection = connection;
+    connection.subscribe(this.player);
 
     await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 
     connection.on(VoiceConnectionStatus.Disconnected, () => {
-      this.emit("disconnect", guild.id);
+      this.emit("disconnect", this.guild.id);
     });
   }
 
-  private async playNext(guildId: string) {
-    const s = this.states.get(guildId);
-    if (!s) return;
+  isConnected() {
+    return this.connection !== null;
+  }
 
-    await s.lock.withLock(async () => {
-      const next = s.queue.shift() ?? null;
-      s.nowPlaying = next;
+  hasTracks() {
+    return this.nowPlaying !== null || this.queue.length > 0;
+  }
+
+  isPlaying() {
+    return this.player.state.status === AudioPlayerStatus.Playing;
+  }
+
+  isPaused() {
+    return this.player.state.status === AudioPlayerStatus.Paused;
+  }
+
+  private async playNext() {
+    await this.lock.withLock(async () => {
+      const next = this.queue.shift() ?? null;
+      this.nowPlaying = next;
 
       if (!next) return;
 
       const resource = await this.createResourceForTrack(next);
 
-      s.player.play(resource);
-      this.emit("trackStart", guildId, next);
+      this.player.play(resource);
+      this.emit("trackStart", this.guild.id, next);
     });
   }
 
   private async resolveWithYtDlp(queryOrUrl: string, requestedBy?: string): Promise<TrackInfo> {
-    const info = (await youtubedl(queryOrUrl, {
+    const execYtdlp = youtubedl as unknown as (
+      url: string,
+      options: Record<string, unknown>
+    ) => Promise<unknown>;
+
+    const info = (await execYtdlp(queryOrUrl, {
       dumpSingleJson: true,
       noWarnings: true,
       noPlaylist: true,
       defaultSearch: "ytsearch1",
-      format: this.YTDLP_FORMAT
+      format: this.YTDLP_FORMAT,
+      jsRuntimes: "node",
+      ...(this.cookiesPath ? { cookies: this.cookiesPath } : {})
     })) as any;
 
     const title: string = info?.title ?? info?.fulltitle ?? "Unknown title";
@@ -268,10 +242,12 @@ export class MusicManager extends EventEmitter {
 
   private async createResourceViaYtDlpPipe(videoUrl: string) {
     // yt-dlp downloads and writes audio bytes to stdout
-    const ytdlp = youtubedl.exec(videoUrl, {
+    const ytdlp = (youtubedl as any).exec(videoUrl, {
       output: "-",
       format: this.YTDLP_FORMAT,
-      noPlaylist: true
+      noPlaylist: true,
+      jsRuntimes: "node",
+      ...(this.cookiesPath ? { cookies: this.cookiesPath } : {})
     });
 
     // ffmpeg reads from stdin (pipe:0) and outputs Ogg Opus to stdout
@@ -302,11 +278,6 @@ export class MusicManager extends EventEmitter {
 
     // pipe yt-dlp -> ffmpeg
     ytdlp.stdout?.pipe(ffmpeg);
-
-    // debug (enable if needed)
-    // ytdlp.stderr?.on("data", d => console.log("[yt-dlp]", d.toString()));
-    // ffmpeg.process?.stderr?.on("data", d => console.log("[ffmpeg]", d.toString()));
-    // ffmpeg.process?.on("close", code => console.log("[ffmpeg] exited", code));
 
     return createAudioResource(ffmpeg, { inputType: StreamType.OggOpus });
   }
@@ -394,5 +365,3 @@ function pickAudioUrlAndCodec(info: any): { url: string; acodec?: string } | nul
 
   return null;
 }
-
-export const musicManager = new MusicManager();

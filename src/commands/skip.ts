@@ -1,43 +1,56 @@
 import { SlashCommandBuilder } from "discord.js";
-import { useMainPlayer } from "discord-player";
-import { replyControll } from "../replyFolder/replyControll.js";
+import type { Services } from "../di/container.js";
 import type { CommandModule } from "../types/command.js";
 
-const skip: CommandModule = {
-  data: new SlashCommandBuilder().setName("skip").setDescription("Skip current song"),
+export function createSkipCommand(services: Services): CommandModule {
+  const { guildManagers } = services;
 
-  execute: async ({ client, interaction }) => {
-    if (!interaction.inCachedGuild()) {
-      return;
-    }
+  return {
+    data: new SlashCommandBuilder().setName("skip").setDescription("Skip current song"),
 
-    const channel = interaction.member.voice.channel;
-    const ReplyControll = replyControll.getInstance(interaction.guild, interaction);
-
-    if (!channel) {
-      return interaction.reply("You need to be in a Voice Channel to skip a song.");
-    }
-
-    const player = useMainPlayer();
-    const guildNodeManager = player.queues;
-    const guildQueue = guildNodeManager.get(interaction.guild);
-
-    if (!guildQueue?.connection) {
-      return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.", interaction, 3000);
-    }
-
-    try {
-      if (guildQueue.isPlaying() || !guildQueue.isEmpty()) {
-        guildQueue.node.skip();
-      } else {
-        return ReplyControll.replyToInteractionWithMessage("There are no songs to be skipped. Queue is empty.", interaction, 3000);
+    execute: async ({ interaction }) => {
+      if (!interaction.inCachedGuild()) {
+        return;
       }
-      return ReplyControll.replyToInteractionWithMessage("Song removed from queue", interaction, 3000);
-    } catch (e) {
-      console.log(e);
-      return ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`, interaction, 5000);
-    }
-  }
-};
 
-export default skip;
+      const channel = interaction.member.voice.channel;
+      const guildManager = guildManagers.get(interaction.guild, interaction);
+      const replyController = guildManager.repliesController;
+      const musicManager = guildManager.musicController;
+
+      if (!channel) {
+        return replyController.replyToInteractionWithMessage(
+          "You need to be in a Voice Channel to skip a song.",
+          interaction,
+          3000
+        );
+      }
+
+      if (!musicManager.isConnected()) {
+        return replyController.replyToInteractionWithMessage(
+          "Bot is not connected to this channel.",
+          interaction,
+          3000
+        );
+      }
+
+      try {
+        if (!musicManager.hasTracks()) {
+          return replyController.replyToInteractionWithMessage(
+            "There are no songs to be skipped. Queue is empty.",
+            interaction,
+            3000
+          );
+        }
+
+        await musicManager.skip();
+        return replyController.replyToInteractionWithMessage("Song removed from queue", interaction, 3000);
+      } catch (e) {
+        console.log(e);
+        return replyController.replyToInteractionWithMessage(`Something went wrong: ${e}`, interaction, 5000);
+      }
+    }
+  };
+}
+
+export default createSkipCommand;

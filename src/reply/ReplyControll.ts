@@ -1,17 +1,12 @@
-import { Track, useMainPlayer } from "discord-player";
-import type { ButtonInteraction, Guild, RepliableInteraction } from "discord.js";
+import type { Track } from "discord-player";
+import type { ButtonInteraction, RepliableInteraction } from "discord.js";
 import type { BotInteraction } from "../types/command.js";
 import type { BotClient } from "../types/bot.js";
-import { createMusicMessageEmbed } from "./embedMessageTemplate.js";
-import { musicEmbedUI } from "./buttonsUI.js";
+import { createMusicMessageEmbed } from "./EmbedMessageTemplate.js";
+import { MusicEmbedUI } from "./ButtonsUI.js";
+import type { MusicManager, TrackInfo } from "../music/MusicManager.js";
 
-declare module "discord.js" {
-  interface Guild {
-    replyControllSingleton?: ReplyControllSingleton | null;
-  }
-}
-
-class ReplyControllSingleton {
+class ReplyControll {
   private interaction: BotInteraction | null;
   private currentEmbed = createMusicMessageEmbed();
 
@@ -71,7 +66,7 @@ class ReplyControllSingleton {
   async replyToInteractionWithEmbed(
     reply: ReturnType<typeof createMusicMessageEmbed>,
     newInteraction: RepliableInteraction,
-    UIcomponent: musicEmbedUI | null = null,
+    UIcomponent: MusicEmbedUI | null = null,
     timeToRemove = -1
   ) {
     return this.withLock(async () => {
@@ -125,7 +120,7 @@ class ReplyControllSingleton {
     });
   }
 
-  songToEmbed(song: Track) {
+  songToEmbed(song: Track | TrackInfo) {
     // This is synchronous; it will be called from locked methods below.
     if (!this.currentEmbed.fields) this.currentEmbed.fields = [];
 
@@ -135,14 +130,15 @@ class ReplyControllSingleton {
       this.currentEmbed.fields[0].value = song.title;
     }
 
-    const thumbnailUrl = (song.raw as Record<string, any>)?.thumbnail?.url ?? "";
+    const rawThumbnail = (song as Track)?.raw as Record<string, any> | undefined;
+    const thumbnailUrl = rawThumbnail?.thumbnail?.url ?? (song as TrackInfo)?.thumbnailUrl ?? "";
     this.currentEmbed.image = { url: thumbnailUrl };
 
     return this.currentEmbed;
   }
 
   getMusicUI() {
-    return new musicEmbedUI();
+    return new MusicEmbedUI();
   }
 
   async removeCurrentEmbed() {
@@ -151,21 +147,11 @@ class ReplyControllSingleton {
     });
   }
 
-  exitChanell(client: BotClient, interaction: BotInteraction) {
-    const player = useMainPlayer();
-    const guildNodeManager = player.queues;
-    const guildQueue = interaction.guildId
-      ? guildNodeManager.get(client.guilds.cache.get(interaction.guildId) as Guild)
-      : null;
-
-    if (guildQueue?.connection) {
-      if (guildQueue.connection.disconnect()) {
-        player.events.emit("disconnect", guildQueue);
-      }
-    }
-  }
-
-  async buttonClick(interaction: ButtonInteraction, client: BotClient) {
+  async buttonClick(
+    interaction: ButtonInteraction<"cached">,
+    client: BotClient,
+    musicManager: MusicManager | null = null
+  ) {
     let commandName: string | null = null;
 
     switch (interaction.customId) {
@@ -180,7 +166,9 @@ class ReplyControllSingleton {
         break;
       case "exitButton":
         await this.replyToInteractionWithMessage("Exiting...", interaction, 1000);
-        this.exitChanell(client, interaction);
+        if (musicManager) {
+          await musicManager.leave();
+        }
         return;
       default:
         break;
@@ -196,7 +184,7 @@ class ReplyControllSingleton {
     return command.execute({ client, interaction });
   }
 
-  updateCurrentEmbedWithSong(song: Track) {
+  updateCurrentEmbedWithSong(song: Track | TrackInfo) {
     return this.withLock(async () => {
       if (!this.interaction) throw new Error("There is no interaction to update");
       if (!this.interaction.replied) throw new Error("Cannot update interaction before replying to it");
@@ -204,7 +192,7 @@ class ReplyControllSingleton {
       const musicMessageEmbed = this.songToEmbed(song);
       const replyObject = {
         embeds: [musicMessageEmbed],
-        components: [new musicEmbedUI()]
+        components: [new MusicEmbedUI()]
       };
 
       return this.interaction.editReply(replyObject);
@@ -212,36 +200,4 @@ class ReplyControllSingleton {
   }
 }
 
-
-class ReplyControll {
-  constructor() {
-    throw new Error("Use ReplyControll.getInstance()");
-  }
-
-  static getInstance(guild: Guild, interaction: BotInteraction | null = null) {
-    let inst = guild.replyControllSingleton;
-
-    if (!inst) {
-      inst = new ReplyControllSingleton(interaction);
-      guild.replyControllSingleton = inst;
-    } else if (interaction) {
-      inst.setInteraction(interaction);
-    }
-
-    return inst;
-  }
-
-  static async resetInstance(guild: Guild) {
-    const inst = guild.replyControllSingleton ?? null;
-
-    // Detach first so a new getInstance() won't get wiped later.
-    guild.replyControllSingleton = null;
-
-    if (inst) {
-      await inst.shutdown();
-    }
-  }
-}
-
-
-export { ReplyControll as replyControll, ReplyControllSingleton };
+export { ReplyControll };

@@ -1,42 +1,52 @@
 import { SlashCommandBuilder } from "discord.js";
-import { useMainPlayer } from "discord-player";
-import { replyControll } from "../replyFolder/replyControll.js";
+import type { Services } from "../di/container.js";
 import type { CommandModule } from "../types/command.js";
 
-const pause: CommandModule = {
-  data: new SlashCommandBuilder().setName("pause").setDescription("Pause current song"),
+export function createPauseCommand(services: Services): CommandModule {
+  const { guildManagers } = services;
 
-  execute: async ({ client, interaction }) => {
-    if (!interaction.inCachedGuild()) {
-      return;
-    }
+  return {
+    data: new SlashCommandBuilder().setName("pause").setDescription("Pause current song"),
 
-    const channel = interaction.member.voice.channel;
-    const ReplyControll = replyControll.getInstance(interaction.guild, interaction);
-
-    if (!channel) {
-      return ReplyControll.replyToInteractionWithMessage("You need to be in a Voice Channel to pause a song.", interaction, 3000);
-    }
-
-    const player = useMainPlayer();
-    const guildNodeManager = player.queues;
-    const guildQueue = guildNodeManager.get(interaction.guild);
-
-    if (!guildQueue?.connection) {
-      return ReplyControll.replyToInteractionWithMessage("Bot is not connected to this channel.", interaction, 3000);
-    }
-
-    try {
-      if (guildQueue.isPlaying() || !guildQueue.isEmpty()) {
-        guildQueue.node.pause();
-        return ReplyControll.replyToInteractionWithMessage("Song paused", interaction, 3000);
+    execute: async ({ interaction }) => {
+      if (!interaction.inCachedGuild()) {
+        return;
       }
-      return ReplyControll.replyToInteractionWithMessage("No song is playing", interaction, 3000);
-    } catch (e) {
-      console.log(e);
-      return ReplyControll.replyToInteractionWithMessage(`Something went wrong: ${e}`, interaction);
-    }
-  }
-};
 
-export default pause;
+      const channel = interaction.member.voice.channel;
+      const guildManager = guildManagers.get(interaction.guild, interaction);
+      const replyController = guildManager.repliesController;
+      const musicManager = guildManager.musicController;
+
+      if (!channel) {
+        return replyController.replyToInteractionWithMessage(
+          "You need to be in a Voice Channel to pause a song.",
+          interaction,
+          3000
+        );
+      }
+
+      if (!musicManager.isConnected()) {
+        return replyController.replyToInteractionWithMessage(
+          "Bot is not connected to this channel.",
+          interaction,
+          3000
+        );
+      }
+
+      try {
+        if (!musicManager.isPlaying()) {
+          return replyController.replyToInteractionWithMessage("No song is playing", interaction, 3000);
+        }
+
+        await musicManager.pause();
+        return replyController.replyToInteractionWithMessage("Song paused", interaction, 3000);
+      } catch (e) {
+        console.log(e);
+        return replyController.replyToInteractionWithMessage(`Something went wrong: ${e}`, interaction);
+      }
+    }
+  };
+}
+
+export default createPauseCommand;

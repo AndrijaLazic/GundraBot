@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
-export class musicEmbedUI extends ActionRowBuilder<ButtonBuilder> {
+export class MusicEmbedUI extends ActionRowBuilder<ButtonBuilder> {
   constructor() {
     super();
     this.addComponents(

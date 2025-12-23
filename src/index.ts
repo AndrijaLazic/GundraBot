@@ -1,8 +1,11 @@
 import dotenv from "dotenv";
 import { IntentsBitField } from "discord.js";
+import { createCommands } from "./commands/index.js";
 import { createPlayer } from "./config/player.js";
-import { registerClientEvents, registerPlayerEvents } from "./config/events.js";
+import { buildServices } from "./di/container.js";
 import { BotClient } from "./types/bot.js";
+import { registerPlayerEvents } from "./config/events/playerEvents.js";
+import { registerClientEvents } from "./config/events/clientEvents.js";
 
 dotenv.config();
 
@@ -13,21 +16,25 @@ if (!token || !clientId) {
   throw new Error("Missing TOKEN or CLIENT_ID environment variables");
 }
 
-const client = new BotClient({
-  intents: [
-    IntentsBitField.Flags.Guilds,
-    IntentsBitField.Flags.GuildMembers,
-    IntentsBitField.Flags.GuildMessages,
-    IntentsBitField.Flags.MessageContent,
-    IntentsBitField.Flags.GuildVoiceStates
-  ]
-});
+const services = buildServices();
+const commands = createCommands(services);
 
-await client.commandsReady;
+const client = new BotClient(
+  {
+    intents: [
+      IntentsBitField.Flags.Guilds,
+      IntentsBitField.Flags.GuildMembers,
+      IntentsBitField.Flags.GuildMessages,
+      IntentsBitField.Flags.MessageContent,
+      IntentsBitField.Flags.GuildVoiceStates
+    ]
+  },
+  commands
+);
 
 const player = createPlayer(client);
 
-registerPlayerEvents(player);
-registerClientEvents(client, token, clientId);
+registerPlayerEvents(player, services);
+registerClientEvents(client, token, clientId, services);
 
 client.login(token);
