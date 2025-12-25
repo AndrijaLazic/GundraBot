@@ -1,13 +1,10 @@
 import type { Guild } from "discord.js";
 import type { BotInteraction } from "../types/command.js";
-import { ServerGuildManager, type GuildLock } from "../guild/ServerGuildManager.js";
+import { ServerGuildManager } from "../guild/ServerGuildManager.js";
 import type { MusicManager } from "../music/MusicManager.js";
-import type { ReplyControll } from "../reply/ReplyControll.js";
 
 export type GuildManagerFactoryDeps = {
-  createLock: () => GuildLock;
-  createReplies: (interaction: BotInteraction | null) => ReplyControll;
-  createMusic: (guild: Guild, lock: GuildLock) => MusicManager;
+  createMusic: (guild: Guild) => MusicManager;
   logger?: Console;
 };
 
@@ -25,13 +22,9 @@ export class GuildManagerProvider {
     if (!manager) {
       console.log("Creating ServerGuildManager for:" + guild.name);
 
-      const lock = this.deps.createLock();
-      const replies = this.deps.createReplies(interaction);
-      const music = this.deps.createMusic(guild, lock);
+      const music = this.deps.createMusic(guild);
 
       manager = new ServerGuildManager(guild, interaction, 
-        lock,
-        replies,
         music,
         this.logger,
         () => this.instances.delete(guild),
@@ -40,7 +33,7 @@ export class GuildManagerProvider {
       this.instances.set(guild, manager);
     } else if (interaction) {
       console.log("ServerGuildManager for guild " + guild.name + " already exists");
-      manager.repliesController.setInteraction(interaction);
+      manager.musicEmbed.setInteraction(interaction);
     }
 
     return manager;

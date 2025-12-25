@@ -28,13 +28,12 @@ export function createPlayCommand(services: Services): CommandModule {
 
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
-      const replyController = guildManager.repliesController;
       const musicManager = guildManager.musicController;
 
       if (!channel) {
-        return replyController.replyToInteractionWithMessage(
-          "You need to be in a Voice Channel to play a song.",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "You need to be in a Voice Channel to play a song.",
           3000
         );
       }
@@ -46,9 +45,9 @@ export function createPlayCommand(services: Services): CommandModule {
       try {
         parsedUrl = new URL(query);
       } catch {
-        return replyController.replyToInteractionWithMessage(
-          "Invalid URL. Paste a full YouTube URL.",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "Invalid URL. Paste a full YouTube URL.",
           3000
         );
       }
@@ -57,15 +56,15 @@ export function createPlayCommand(services: Services): CommandModule {
       const isYoutube = host.includes("youtube.com") || host.includes("youtu.be");
 
       if (!isYoutube) {
-        return replyController.replyToInteractionWithMessage(
-          "You can only use YOUTUBE as a source",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "You can only use YOUTUBE as a source",
           3000
         );
       }
 
       // Reply fast, then do the heavy work
-      await replyController.replyToInteractionWithMessage("Loading…", interaction);
+      await guildManager.replyToInteractionWithMessage(interaction, "Loading…");
 
       try {
         const track = await musicManager.enqueueFromQuery({

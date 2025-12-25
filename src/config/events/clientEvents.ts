@@ -41,13 +41,60 @@ export function registerClientEvents(
 
     if (interaction.isButton()) {
       const guildManager = services.guildManagers.get(guild, interaction);
-      const ReplyControll = guildManager.repliesController;
+      const musicEmbed = guildManager.musicEmbed;
+      const musicManager = guildManager.musicController;
+
+      const respondError = async (message: string) => {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ content: message });
+        } else {
+          await interaction.reply({ content: message });
+        }
+      };
 
       try {
-        await ReplyControll.buttonClick(interaction, client, guildManager.musicController);
+        let commandName: string | null = null;
+
+        switch (interaction.customId) {
+          case "skipButton":
+            commandName = "skip";
+            break;
+          case "pauseButton":
+            commandName = "pause";
+            break;
+          case "resumeButton":
+            commandName = "resume";
+            break;
+          case "exitButton": {
+            await interaction.message.edit({ embeds: [], components: [] }).catch(() => {});
+            await interaction.message.delete().catch(() => {});
+
+            setTimeout(() => {
+              interaction.deleteReply?.().catch(() => {});
+            }, 1000);
+
+            await musicManager.leave().catch(() => {});
+            return;
+          }
+          default:
+            break;
+        }
+
+        if (!commandName) {
+          await respondError("Unknown button action.");
+          return;
+        }
+
+        const command = client.commands.get(commandName);
+        if (!command) {
+          await respondError(`Missing command: ${commandName}`);
+          return;
+        }
+
+        await command.execute({ client, interaction });
       } catch (e) {
         console.log(e);
-        await interaction.reply({ content: "There was an error executing this command" });
+        await respondError("There was an error executing this command");
       }
       return;
     }

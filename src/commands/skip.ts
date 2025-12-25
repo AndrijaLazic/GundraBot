@@ -15,39 +15,46 @@ export function createSkipCommand(services: Services): CommandModule {
 
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
-      const replyController = guildManager.repliesController;
       const musicManager = guildManager.musicController;
 
       if (!channel) {
-        return replyController.replyToInteractionWithMessage(
-          "You need to be in a Voice Channel to skip a song.",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "You need to be in a Voice Channel to skip a song.",
           3000
         );
       }
 
       if (!musicManager.isConnected()) {
-        return replyController.replyToInteractionWithMessage(
-          "Bot is not connected to this channel.",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "Bot is not connected to this channel.",
           3000
         );
       }
 
       try {
         if (!musicManager.hasTracks()) {
-          return replyController.replyToInteractionWithMessage(
-            "There are no songs to be skipped. Queue is empty.",
+          return guildManager.replyToInteractionWithMessage(
             interaction,
+            "There are no songs to be skipped. Queue is empty.",
             3000
           );
         }
 
         await musicManager.skip();
-        return replyController.replyToInteractionWithMessage("Song removed from queue", interaction, 3000);
+        return guildManager.replyToInteractionWithMessage(
+          interaction,
+          "Song removed from queue",
+          3000
+        );
       } catch (e) {
         console.log(e);
-        return replyController.replyToInteractionWithMessage(`Something went wrong: ${e}`, interaction, 5000);
+        return guildManager.replyToInteractionWithMessage(
+          interaction,
+          `Something went wrong: ${e}`,
+          5000
+        );
       }
     }
   };

@@ -15,38 +15,49 @@ export function createResumeCommand(services: Services): CommandModule {
 
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
-      const replyController = guildManager.repliesController;
       const musicManager = guildManager.musicController;
 
       if (!channel) {
-        return replyController.replyToInteractionWithMessage(
-          "You need to be in a Voice Channel to resume a song.",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "You need to be in a Voice Channel to resume a song.",
           3000
         );
       }
 
       if (!musicManager.isConnected()) {
-        return replyController.replyToInteractionWithMessage(
-          "Bot is not connected to this channel.",
+        return guildManager.replyToInteractionWithMessage(
           interaction,
+          "Bot is not connected to this channel.",
           3000
         );
       }
 
       try {
         if (!musicManager.hasTracks()) {
-          return replyController.replyToInteractionWithMessage("There is no song to resume", interaction, 3000);
+          return guildManager.replyToInteractionWithMessage(
+            interaction,
+            "There is no song to resume",
+            3000
+          );
         }
         if (!musicManager.isPaused()) {
-          return replyController.replyToInteractionWithMessage("Song is already playing", interaction, 3000);
+          return guildManager.replyToInteractionWithMessage(
+            interaction,
+            "Song is already playing",
+            3000
+          );
         }
 
         await musicManager.resume();
-        return replyController.replyToInteractionWithMessage("Song resumed", interaction, 3000);
+        return guildManager.replyToInteractionWithMessage(interaction, "Song resumed", 3000);
       } catch (e) {
         console.log(e);
-        return replyController.replyToInteractionWithMessage(`Something went wrong: ${e}`, interaction, 3000);
+        return guildManager.replyToInteractionWithMessage(
+          interaction,
+          `Something went wrong: ${e}`,
+          3000
+        );
       }
     }
   };

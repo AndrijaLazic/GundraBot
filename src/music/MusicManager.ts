@@ -1,20 +1,18 @@
 import { EventEmitter } from "node:events";
-import youtubedl from "youtube-dl-exec";
-import prism from "prism-media";
 import {
   AudioPlayerStatus,
   NoSubscriberBehavior,
-  StreamType,
   VoiceConnectionStatus,
   createAudioPlayer,
-  createAudioResource,
   entersState,
   joinVoiceChannel,
   type AudioPlayer,
   type VoiceConnection
 } from "@discordjs/voice";
 import type { Guild, VoiceBasedChannel } from "discord.js";
-import type { GuildLock } from "../guild/ServerGuildManager.js";
+import { GuildLock } from "../guild/ServerGuildManager.js";
+import { MusicEmbed } from "./MusicEmbed.js";
+import { YoutubeMusicPlayer } from "./YoutubeMusicPlayer.js";
 
 export type TrackInfo = {
   title: string;
@@ -39,9 +37,10 @@ export class MusicManager extends EventEmitter {
   private player: AudioPlayer;
   private queue: TrackInfo[] = [];
   private nowPlaying: TrackInfo | null = null;
-  private cookiesPath = process.env.YTDLP_COOKIES;
   private guild: Guild;
   private shuttingDown = false;
+  public readonly musicEmbed: MusicEmbed;
+  private readonly youtubeHelper: YoutubeMusicPlayer;
 
   /**
    * If TRUE: stream is `yt-dlp -> stdout -> ffmpeg -> opus/ogg -> discord`
@@ -54,10 +53,16 @@ export class MusicManager extends EventEmitter {
    */
   private readonly YTDLP_FORMAT = "bestaudio[acodec=opus]/bestaudio/best";
 
-  constructor(guild: Guild, lock: GuildLock) {
+  constructor(guild: Guild) {
     super();
     this.guild = guild;
-    this.lock = lock;
+    this.lock = new GuildLock();
+    this.musicEmbed = new MusicEmbed();
+    this.youtubeHelper = new YoutubeMusicPlayer({
+      cookiesPath: process.env.YTDLP_COOKIES,
+      pipeFromYtdlp: this.PIPE_FROM_YTDLP,
+      ytdlpFormat: this.YTDLP_FORMAT
+    });
 
     this.player = createAudioPlayer({
       behaviors: { noSubscriber: NoSubscriberBehavior.Pause }
@@ -129,13 +134,11 @@ export class MusicManager extends EventEmitter {
 
       if (this.connection) {
         try {
+          this.musicEmbed.shutdown();
           this.connection.destroy();
         } catch {}
         this.connection = null;
       }
-
-      this.lock.close();
-      this.emit("disconnect", this.guild.id);
     });
   }
 
@@ -156,7 +159,8 @@ export class MusicManager extends EventEmitter {
 
     await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 
-    connection.on(VoiceConnectionStatus.Disconnected, () => {
+    connection.on(VoiceConnectionStatus.Disconnected, async () => {
+      await this.leave();
       this.emit("disconnect", this.guild.id);
     });
   }
@@ -192,176 +196,10 @@ export class MusicManager extends EventEmitter {
   }
 
   private async resolveWithYtDlp(queryOrUrl: string, requestedBy?: string): Promise<TrackInfo> {
-    const execYtdlp = youtubedl as unknown as (
-      url: string,
-      options: Record<string, unknown>
-    ) => Promise<unknown>;
-
-    const info = (await execYtdlp(queryOrUrl, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      noPlaylist: true,
-      defaultSearch: "ytsearch1",
-      format: this.YTDLP_FORMAT,
-      jsRuntimes: "node",
-      ...(this.cookiesPath ? { cookies: this.cookiesPath } : {})
-    })) as any;
-
-    const title: string = info?.title ?? info?.fulltitle ?? "Unknown title";
-    const webpageUrl: string = info?.webpage_url ?? info?.original_url ?? queryOrUrl;
-
-    const thumbnailUrl: string | undefined =
-      info?.thumbnail ??
-      (Array.isArray(info?.thumbnails) ? info.thumbnails.at(-1)?.url : undefined);
-
-    // For direct-url mode, pick best audio url + codec
-    const picked = pickAudioUrlAndCodec(info);
-
-    return {
-      title,
-      webpageUrl,
-      thumbnailUrl,
-      requestedBy,
-      audioUrl: picked?.url,
-      acodec: picked?.acodec
-    };
+    return this.youtubeHelper.resolveWithYtDlp(queryOrUrl, requestedBy);
   }
 
   private async createResourceForTrack(track: TrackInfo) {
-    if (this.PIPE_FROM_YTDLP) {
-      return this.createResourceViaYtDlpPipe(track.webpageUrl);
-    }
-
-    if (!track.audioUrl) {
-      // fallback: if no audioUrl, still pipe
-      return this.createResourceViaYtDlpPipe(track.webpageUrl);
-    }
-
-    return this.createResourceFromDirectUrl(track.audioUrl, track.acodec);
+    return this.youtubeHelper.createResourceForTrack(track);
   }
-
-  private async createResourceViaYtDlpPipe(videoUrl: string) {
-    // yt-dlp downloads and writes audio bytes to stdout
-    const ytdlp = (youtubedl as any).exec(videoUrl, {
-      output: "-",
-      format: this.YTDLP_FORMAT,
-      noPlaylist: true,
-      jsRuntimes: "node",
-      ...(this.cookiesPath ? { cookies: this.cookiesPath } : {})
-    });
-
-    // ffmpeg reads from stdin (pipe:0) and outputs Ogg Opus to stdout
-    const ffmpeg = new prism.FFmpeg({
-      args: [
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-i",
-        "pipe:0",
-        "-vn",
-        "-af",
-        "aresample=async=1:first_pts=0",
-        "-c:a",
-        "libopus",
-        "-b:a",
-        "96k",
-        "-vbr",
-        "on",
-        "-compression_level",
-        "0",
-        "-frame_duration",
-        "20",
-        "-f",
-        "ogg"
-      ]
-    });
-
-    // pipe yt-dlp -> ffmpeg
-    ytdlp.stdout?.pipe(ffmpeg);
-
-    return createAudioResource(ffmpeg, { inputType: StreamType.OggOpus });
-  }
-
-  private async createResourceFromDirectUrl(audioUrl: string, acodec?: string) {
-    const isOpus = (acodec ?? "").toLowerCase().includes("opus");
-
-    const ffmpeg = new prism.FFmpeg({
-      args: [
-        "-hide_banner",
-        "-loglevel",
-        "error",
-
-        // headers help some CDNs
-        "-user_agent",
-        "Mozilla/5.0",
-        "-referer",
-        "https://www.youtube.com/",
-
-        "-reconnect",
-        "1",
-        "-reconnect_streamed",
-        "1",
-        "-reconnect_delay_max",
-        "5",
-
-        "-i",
-        audioUrl,
-        "-vn",
-
-        ...(isOpus
-          ? [
-              // avoid re-encode (less CPU, less stutter)
-              "-c:a",
-              "copy",
-              "-f",
-              "ogg"
-            ]
-          : [
-              // stable re-encode path
-              "-af",
-              "aresample=async=1:first_pts=0",
-              "-c:a",
-              "libopus",
-              "-b:a",
-              "96k",
-              "-vbr",
-              "on",
-              "-compression_level",
-              "0",
-              "-frame_duration",
-              "20",
-              "-f",
-              "ogg"
-            ])
-      ]
-    });
-
-    return createAudioResource(ffmpeg, { inputType: StreamType.OggOpus });
-  }
-}
-
-function pickAudioUrlAndCodec(info: any): { url: string; acodec?: string } | null {
-  // Sometimes top-level has `url`
-  if (typeof info?.url === "string" && info.url.length > 0) {
-    const acodec = info?.acodec ?? undefined;
-    return { url: info.url, acodec };
-  }
-
-  const rf = info?.requested_formats;
-  if (Array.isArray(rf) && typeof rf[0]?.url === "string") {
-    return { url: rf[0].url, acodec: rf[0]?.acodec ?? undefined };
-  }
-
-  const formats = info?.formats;
-  if (Array.isArray(formats)) {
-    const candidates = formats
-      .filter((f: any) => typeof f?.url === "string" && (f?.acodec ?? "none") !== "none")
-      .sort((a: any, b: any) => Number(b?.abr ?? 0) - Number(a?.abr ?? 0));
-
-    if (typeof candidates[0]?.url === "string") {
-      return { url: candidates[0].url, acodec: candidates[0]?.acodec ?? undefined };
-    }
-  }
-
-  return null;
 }
