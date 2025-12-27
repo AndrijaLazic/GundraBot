@@ -4,10 +4,12 @@ import { createCommands } from "./commands/index.js";
 import { createPlayer } from "./config/player.js";
 import { buildServices } from "./di/container.js";
 import { BotClient } from "./types/bot.js";
-import { registerPlayerEvents } from "./config/events/playerEvents.js";
-import { registerClientEvents } from "./config/events/clientEvents.js";
+import { registerPlayerEvents } from "./commands/events/playerEvents.js";
+import { registerClientEvents } from "./commands/events/clientEvents.js";
 
-dotenv.config();
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 
 const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
