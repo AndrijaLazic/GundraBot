@@ -1,0 +1,16 @@
+name: gundrabot-prod
+
+services:
+  gundrabot:
+    container_name: gundrabot-prod
+    image: gundrabot:prod
+    build:
+      context: ../..
+      dockerfile: docker/Deploy/Dockerfile.deploy
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ../secrets:/usr/src/app/secrets:ro
+    restart: unless-stopped

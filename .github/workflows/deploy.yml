@@ -1,0 +1,31 @@
+name: Deploy Gundrabot (PROD)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gundrabot-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, deploy, stage]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          clean: true
+
+      - name: Show workspace (debug)
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          ls -la
+
+      - name: Deploy (build on VPS)
+        run: sudo -n /home/main/gundrabot/deploy/deploy_gundrabot.sh prod
+

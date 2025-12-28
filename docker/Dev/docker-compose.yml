@@ -1,12 +1,14 @@
+name: gundrabot-dev
+
 services:
   gundrabot:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ../..
+      dockerfile: docker/Dev/dockerfile
     container_name: gundrabot
 
     volumes:
-      - ..:/usr/src/app:cached
+      - ../..:/usr/src/app:cached
       - gundrabot_node_modules:/usr/src/app/node_modules
 
     environment:
