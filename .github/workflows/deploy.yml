@@ -21,11 +21,10 @@ jobs:
           fetch-depth: 1
           clean: true
 
-      - name: Show workspace (debug)
+      - name: Deploy via SSH forced-command
         run: |
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          ls -la
-
-      - name: Deploy (build on VPS)
-        run: sudo -n /home/main/gundrabot/deploy/deploy_gundrabot.sh prod
-
+          ssh -p 2222 \
+          -o StrictHostKeyChecking=yes \
+          -o UserKnownHostsFile=/home/runner/.ssh/known_hosts \
+          github-runner@host.docker.internal \
+          'deploy-gundrabot prod'
