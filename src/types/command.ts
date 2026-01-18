@@ -3,6 +3,7 @@ import type {
   ChatInputCommandInteraction,
   Client,
   SlashCommandBuilder,
+  SlashCommandOptionsOnlyBuilder,
   SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 
@@ -16,6 +17,9 @@ export type CommandExecuteArgs = {
 };
 
 export type CommandModule = {
-  readonly data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
+  readonly data:
+    | SlashCommandBuilder
+    | SlashCommandOptionsOnlyBuilder
+    | SlashCommandSubcommandsOnlyBuilder;
   execute(args: CommandExecuteArgs): Promise<unknown>;
 };
