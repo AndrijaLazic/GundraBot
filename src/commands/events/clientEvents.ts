@@ -9,8 +9,10 @@ export function registerClientEvents(
   clientId: string,
   services: Services
 ) {
+  const logger = services.logger.child({ component: "clientEvents" });
+
   client.once(Events.ClientReady, async readyClient => {
-    console.log("The bot " + readyClient.user.tag + " is ready.");
+    logger.info("Client ready", { userTag: readyClient.user.tag });
 
     const guilds = client.guilds.cache.map(guild => ({
       id: guild.id,
@@ -24,8 +26,16 @@ export function registerClientEvents(
         .put(Routes.applicationGuildCommands(clientId, id), {
           body: client.commandData
         })
-        .then(() => console.log(`Added commands to ${name} (${id})`))
-        .catch(error => console.error(`Failed to add commands to: ${name} (${id})`, error));
+        .then(() =>
+          logger.info("Added commands to guild", { guildId: id, guildName: name })
+        )
+        .catch(error =>
+          logger.error("Failed to add commands to guild", {
+            guildId: id,
+            guildName: name,
+            error
+          })
+        );
     }
   });
 
@@ -93,7 +103,7 @@ export function registerClientEvents(
 
         await command.execute({ client, interaction });
       } catch (e) {
-        console.log(e);
+        logger.error("Button interaction failed", e);
         await respondError("There was an error executing this command");
       }
       return;
@@ -107,16 +117,16 @@ export function registerClientEvents(
     try {
       await command.execute({ client, interaction });
     } catch (error) {
-      console.error(error);
+      logger.error("Command execution failed", error);
       await interaction.reply({ content: "There was an error executing this command" });
     }
   });
 
   client.once("reconnecting", message => {
-    console.log("Reconnecting!" + message);
+    logger.warn("Reconnecting", { message });
   });
 
   client.on("disconnect", message => {
-    console.log("Disconnect!" + message);
+    logger.warn("Disconnected", { message });
   });
 }

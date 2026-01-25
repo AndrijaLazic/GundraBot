@@ -4,6 +4,7 @@ import type { CommandModule } from "../types/command.js";
 
 export function createSkipCommand(services: Services): CommandModule {
   const { guildManagers } = services;
+  const logger = services.logger.child({ command: "skip" });
 
   return {
     data: new SlashCommandBuilder().setName("skip").setDescription("Skip current song"),
@@ -12,6 +13,11 @@ export function createSkipCommand(services: Services): CommandModule {
       if (!interaction.inCachedGuild()) {
         return;
       }
+
+      const requestLogger = logger.child({
+        guildId: interaction.guild.id,
+        requesterTag: interaction.user.tag
+      });
 
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
@@ -49,7 +55,7 @@ export function createSkipCommand(services: Services): CommandModule {
           3000
         );
       } catch (e) {
-        console.log(e);
+        requestLogger.error("Skip failed", e);
         return guildManager.replyToInteractionWithMessage(
           interaction,
           `Something went wrong: ${e}`,

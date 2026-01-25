@@ -4,6 +4,7 @@ import type { CommandModule } from "../types/command.js";
 
 export function createPlayCommand(services: Services): CommandModule {
   const { guildManagers } = services;
+  const logger = services.logger.child({ command: "play" });
 
   return {
     data: new SlashCommandBuilder()
@@ -25,9 +26,13 @@ export function createPlayCommand(services: Services): CommandModule {
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
       const musicManager = guildManager.musicController;
+      const requestLogger = logger.child({
+        guildId: interaction.guild.id,
+        requesterTag
+      });
 
       if (!channel) {
-        console.log(`[play] ${requesterTag} blocked: not in voice channel`);
+        requestLogger.warn("Blocked: requester not in voice channel");
         return guildManager.replyToInteractionWithMessage(
           interaction,
           "You need to be in a Voice Channel to play a song.",
@@ -36,9 +41,10 @@ export function createPlayCommand(services: Services): CommandModule {
       }
 
       const query = interaction.options.getString("query", true).trim();
-      console.log(
-        `[play] ${requesterTag} requested "${query}" in ${interaction.guild.id}/${channel.id}`
-      );
+      requestLogger.info("Play requested", {
+        channelId: channel.id,
+        query
+      });
 
       // If input is a URL, restrict it to YouTube only.
       let parsedUrl: URL | null = null;
@@ -51,7 +57,7 @@ export function createPlayCommand(services: Services): CommandModule {
         const isYoutube = host.includes("youtube.com") || host.includes("youtu.be");
 
         if (!isYoutube) {
-          console.log(`[play] ${requesterTag} blocked: non-YouTube URL "${query}"`);
+          requestLogger.warn("Blocked: non-YouTube URL", { query });
           return guildManager.replyToInteractionWithMessage(
             interaction,
             "You can only use YOUTUBE as a source",
@@ -70,14 +76,14 @@ export function createPlayCommand(services: Services): CommandModule {
           requestedBy: interaction.user.tag
         });
 
-        console.log(
-          `[play] queued "${track.title}" for ${requesterTag} in ${interaction.guild.id}`
-        );
+        requestLogger.info("Queued track", {
+          trackTitle: track.title
+        });
         // Don’t set “Now playing” here (might already be playing something).
         // Let your trackStart event update the embed when it actually starts.
         await interaction.editReply(`Queued: **${track.title}**`);
       } catch (e) {
-        console.log(`[play] enqueue failed for ${requesterTag}`, e);
+        requestLogger.error("Enqueue failed", e);
         await interaction.editReply("Something went wrong while loading that track.");
       }
     }

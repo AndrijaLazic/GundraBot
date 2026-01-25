@@ -3,10 +3,12 @@ import type { Guild } from "discord.js";
 import type { Services } from "../../di/container.js";
 
 export function registerPlayerEvents(player: Player, services: Services) {
+  const logger = services.logger.child({ component: "playerEvents" });
+
   player.events.on("disconnect", queue => {
     const guild = queue.guild as unknown as Guild;
     // void services.guildManagers.reset(guild);
-    console.log("Disconnected player from guild:" + guild);
+    logger.info("Player disconnected", { guildId: guild.id, guildName: guild.name });
   });
 
   player.events.on("playerStart", (queue, track) => {
@@ -16,9 +18,9 @@ export function registerPlayerEvents(player: Player, services: Services) {
     try {
       musicEmbed.updateCurrentEmbedWithSong(track);
     } catch (e) {
-      console.log(e);
+      logger.error("Failed to update music embed on playerStart", e);
     }
   });
 
-  player.events.on("error", e => console.error("PLAYER ERROR", e));
+  player.events.on("error", e => logger.error("Player error", e));
 }

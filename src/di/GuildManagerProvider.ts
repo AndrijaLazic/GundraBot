@@ -1,38 +1,53 @@
 import type { Guild } from "discord.js";
+import { createLogger, type Logger } from "../logging/logger.js";
 import type { BotInteraction } from "../types/command.js";
 import { ServerGuildManager } from "../guild/ServerGuildManager.js";
 import type { MusicManager } from "../music/MusicManager.js";
 
 export type GuildManagerFactoryDeps = {
   createMusic: (guild: Guild) => MusicManager;
-  logger?: Console;
+  logger?: Logger;
 };
 
 export class GuildManagerProvider {
   private instances = new WeakMap<Guild, ServerGuildManager>();
-  private logger: Console;
+  private logger: Logger;
 
   constructor(private deps: GuildManagerFactoryDeps) {
-    this.logger = deps.logger ?? console;
+    this.logger = deps.logger ?? createLogger({ base: { component: "guildManagerProvider" } });
   }
 
   get(guild: Guild, interaction: BotInteraction | null = null): ServerGuildManager {
     let manager = this.instances.get(guild);
 
     if (!manager) {
-      console.log("Creating ServerGuildManager for:" + guild.name);
+      this.logger.info("Creating ServerGuildManager", {
+        guildId: guild.id,
+        guildName: guild.name
+      });
 
       const music = this.deps.createMusic(guild);
 
-      manager = new ServerGuildManager(guild, interaction, 
+      const managerLogger = this.logger.child({
+        guildId: guild.id,
+        guildName: guild.name,
+        component: "guildManager"
+      });
+
+      manager = new ServerGuildManager(
+        guild,
+        interaction,
         music,
-        this.logger,
-        () => this.instances.delete(guild),
+        managerLogger,
+        () => this.instances.delete(guild)
       );
 
       this.instances.set(guild, manager);
     } else if (interaction) {
-      console.log("ServerGuildManager for guild " + guild.name + " already exists");
+      this.logger.debug("ServerGuildManager already exists", {
+        guildId: guild.id,
+        guildName: guild.name
+      });
       manager.musicEmbed.setInteraction(interaction);
     }
 

@@ -1,4 +1,5 @@
 import type { Guild } from "discord.js";
+import type { Logger } from "../logging/logger.js";
 import type { BotInteraction } from "../types/command.js";
 import type { MusicManager } from "../music/MusicManager.js";
 
@@ -25,7 +26,7 @@ export class ServerGuildManager {
     private readonly guild: Guild,
     interaction: BotInteraction | null,
     private readonly music: MusicManager,
-    private readonly logger: Console,
+    private readonly logger: Logger,
     private readonly onDispose: () => void
   ) {
     if (interaction) this.music.musicEmbed.setInteraction(interaction);
@@ -34,16 +35,19 @@ export class ServerGuildManager {
       try {
         this.music.musicEmbed.updateCurrentEmbedWithSong(track);
       } catch (e) {
-        this.logger.log(e);
+        this.logger.error("Failed to update music embed", e);
       }
     });
 
     // Disconnect after inactivity
     this.music.on("disconnect", async () => {
-      console.log(`Music disconnected from guild ${this.guild.name} (${this.guild.id})`);
+      this.logger.info("Music disconnected", {
+        guildId: this.guild.id,
+        guildName: this.guild.name
+      });
     });
 
-    this.music.on("error", (_guildId, err) => this.logger.error("PLAYER ERROR", err));
+    this.music.on("error", (_guildId, err) => this.logger.error("Player error", err));
   }
 
   get musicController() {

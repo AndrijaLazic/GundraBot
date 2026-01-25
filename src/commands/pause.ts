@@ -4,6 +4,7 @@ import type { CommandModule } from "../types/command.js";
 
 export function createPauseCommand(services: Services): CommandModule {
   const { guildManagers } = services;
+  const logger = services.logger.child({ command: "pause" });
 
   return {
     data: new SlashCommandBuilder().setName("pause").setDescription("Pause current song"),
@@ -12,6 +13,11 @@ export function createPauseCommand(services: Services): CommandModule {
       if (!interaction.inCachedGuild()) {
         return;
       }
+
+      const requestLogger = logger.child({
+        guildId: interaction.guild.id,
+        requesterTag: interaction.user.tag
+      });
 
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
@@ -41,7 +47,7 @@ export function createPauseCommand(services: Services): CommandModule {
         await musicManager.pause();
         return guildManager.replyToInteractionWithMessage(interaction, "Song paused", 3000);
       } catch (e) {
-        console.log(e);
+        requestLogger.error("Pause failed", e);
         return guildManager.replyToInteractionWithMessage(
           interaction,
           `Something went wrong: ${e}`

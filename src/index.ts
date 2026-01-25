@@ -7,9 +7,7 @@ import { BotClient } from "./types/bot.js";
 import { registerPlayerEvents } from "./commands/events/playerEvents.js";
 import { registerClientEvents } from "./commands/events/clientEvents.js";
 
-if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
-}
+dotenv.config();
 
 const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
@@ -19,6 +17,7 @@ if (!token || !clientId) {
 }
 
 const services = buildServices();
+const logger = services.logger.child({ component: "process" });
 const commands = createCommands(services);
 
 const client = new BotClient(
@@ -38,5 +37,13 @@ const player = createPlayer(client);
 
 registerPlayerEvents(player, services);
 registerClientEvents(client, token, clientId, services);
+
+process.on("unhandledRejection", reason => {
+  logger.error("Unhandled rejection", reason);
+});
+
+process.on("uncaughtException", error => {
+  logger.error("Uncaught exception", error);
+});
 
 client.login(token);

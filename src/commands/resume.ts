@@ -4,6 +4,7 @@ import type { CommandModule } from "../types/command.js";
 
 export function createResumeCommand(services: Services): CommandModule {
   const { guildManagers } = services;
+  const logger = services.logger.child({ command: "resume" });
 
   return {
     data: new SlashCommandBuilder().setName("resume").setDescription("Resume current song"),
@@ -12,6 +13,11 @@ export function createResumeCommand(services: Services): CommandModule {
       if (!interaction.inCachedGuild()) {
         return;
       }
+
+      const requestLogger = logger.child({
+        guildId: interaction.guild.id,
+        requesterTag: interaction.user.tag
+      });
 
       const channel = interaction.member.voice.channel;
       const guildManager = guildManagers.get(interaction.guild, interaction);
@@ -52,7 +58,7 @@ export function createResumeCommand(services: Services): CommandModule {
         await musicManager.resume();
         return guildManager.replyToInteractionWithMessage(interaction, "Song resumed", 3000);
       } catch (e) {
-        console.log(e);
+        requestLogger.error("Resume failed", e);
         return guildManager.replyToInteractionWithMessage(
           interaction,
           `Something went wrong: ${e}`,

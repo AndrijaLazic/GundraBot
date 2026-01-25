@@ -1,9 +1,8 @@
 // src/di/services.ts
 import type { Guild } from "discord.js";
+import { createLogger, type Logger } from "../logging/logger.js";
 import { MusicManager } from "../music/MusicManager.js";
 import { GuildManagerProvider } from "./GuildManagerProvider.js";
-
-export type Logger = Console;
 
 export type Services = {
   // Singleton per Services instance
@@ -17,19 +16,20 @@ export type Services = {
 };
 
 export function buildServices(): Services {
-  const logger: Logger = console;
+  const logger = createLogger({ base: { service: "gundrabot" } });
+  const musicLogger = logger.child({ component: "music" });
   const createMusic = (guild: Guild) => {
     const musicManager = new MusicManager(guild);
-    console.log("Music manager created for guild: " +  guild.name);
+    musicLogger.info("Music manager created", { guildId: guild.id, guildName: guild.name });
     return musicManager;
   };
 
   const guildManagers = new GuildManagerProvider({
     createMusic,
-    logger,
+    logger: logger.child({ component: "guildManagerProvider" })
   });
 
-  console.log("SERVICES CREATED");
+  logger.info("Services created");
 
   return {
     logger,
