@@ -3,6 +3,10 @@
 
 Bot used for streaming music on Discord.
 
+## Architecture
+
+- Dependency Injection overview: `docs/DI.md`
+
 ## The required software
 
 1. "Desktop development with C++" can be installed with Visual Studio. After that you will need to enter following into the terminal: npm config edit

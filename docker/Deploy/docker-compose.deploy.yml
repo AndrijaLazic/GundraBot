@@ -8,9 +8,10 @@ services:
       context: ../..
       dockerfile: docker/Deploy/Dockerfile.deploy
     env_file:
-      - ../.env
+      - ../../.env
     environment:
       NODE_ENV: production
     volumes:
-      - ../secrets:/usr/src/app/secrets:ro
+      - ../../secrets:/usr/src/app/secrets:ro
+      - ../../logs:/usr/src/app/logs
     restart: unless-stopped
