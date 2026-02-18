@@ -32,8 +32,11 @@ export class YoutubeMusicPlayer {
       options: Record<string, unknown>
     ) => Promise<unknown>;
 
+    const isUrl = isLikelyUrl(queryOrUrl);
+    const ytdlpInput = isUrl ? queryOrUrl : `ytsearch1:${queryOrUrl}`;
+
     // Ask yt-dlp for metadata (single JSON object) and a set of formats
-    const info = (await execYtdlp(queryOrUrl, {
+    const info = (await execYtdlp(ytdlpInput, {
       dumpSingleJson: true,
       noWarnings: true,
       noPlaylist: true,
@@ -43,17 +46,20 @@ export class YoutubeMusicPlayer {
       ...(this.cookiesPath ? { cookies: this.cookiesPath } : {})
     })) as any;
 
+    const entry = firstSearchEntry(info);
+    const source = entry ?? info;
+
     // Human-friendly display fields
-    const title: string = info?.title ?? info?.fulltitle ?? "Unknown title";
-    const webpageUrl: string = info?.webpage_url ?? info?.original_url ?? queryOrUrl;
+    const title: string = source?.title ?? source?.fulltitle ?? "Unknown title";
+    const webpageUrl: string = source?.webpage_url ?? source?.original_url ?? queryOrUrl;
 
     // Choose a thumbnail: prefer a single `thumbnail`, else use the last (usually largest) from `thumbnails[]`
     const thumbnailUrl: string | undefined =
-      info?.thumbnail ??
-      (Array.isArray(info?.thumbnails) ? info.thumbnails.at(-1)?.url : undefined);
+      source?.thumbnail ??
+      (Array.isArray(source?.thumbnails) ? source.thumbnails.at(-1)?.url : undefined);
 
     // Try to pick a direct audio stream URL + codec from yt-dlp output (if available)
-    const picked = pickAudioUrlAndCodec(info);
+    const picked = pickAudioUrlAndCodec(source);
 
     return {
       title,
@@ -80,14 +86,17 @@ export class YoutubeMusicPlayer {
    * Falls back to pipe mode if direct URL is missing.
    */
   async createResourceForTrack(track: TrackInfo) {
+    // Preferred path for reliability across URL expiry and auth edge-cases.
     if (this.pipeFromYtdlp) {
       return this.createResourceViaYtDlpPipe(track.webpageUrl);
     }
 
+    // If metadata did not include a direct audio URL, fallback to pipe mode.
     if (!track.audioUrl) {
       return this.createResourceViaYtDlpPipe(track.webpageUrl);
     }
 
+    // Fast path: stream directly from chosen format URL.
     return this.createResourceFromDirectUrl(track.audioUrl, track.acodec);
   }
 
@@ -209,6 +218,23 @@ export class YoutubeMusicPlayer {
 
     return createAudioResource(ffmpeg, { inputType: StreamType.OggOpus });
   }
+}
+
+function isLikelyUrl(input: string): boolean {
+  try {
+    new URL(input);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function firstSearchEntry(info: any): any | null {
+  if (!Array.isArray(info?.entries)) {
+    return null;
+  }
+
+  return info.entries.find((entry: any) => entry && typeof entry === "object") ?? null;
 }
 
 /**

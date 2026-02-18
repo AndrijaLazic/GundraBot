@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import type { Services } from "../di/container.js";
 import type { CommandModule } from "../types/command.js";
+import { error } from "node:console";
 
 export function createPlayCommand(services: Services): CommandModule {
   const { guildManagers } = services;
@@ -21,6 +22,9 @@ export function createPlayCommand(services: Services): CommandModule {
       if (!interaction.isChatInputCommand() || !interaction.inCachedGuild()) {
         return;
       }
+      // throw new Error("test failure");
+
+      await interaction.deferReply();
 
       const requesterTag = interaction.user.tag;
       const channel = interaction.member.voice.channel;

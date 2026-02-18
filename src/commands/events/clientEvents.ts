@@ -1,4 +1,4 @@
-import { REST, Events } from "discord.js";
+import { REST, Events, type RepliableInteraction } from "discord.js";
 import { Routes } from "discord-api-types/v10";
 import type { Services } from "../../di/container.js";
 import type { BotClient } from "../../types/bot.js";
@@ -10,6 +10,26 @@ export function registerClientEvents(
   services: Services
 ) {
   const logger = services.logger.child({ component: "clientEvents" });
+  const safeRespond = async (
+    interaction: RepliableInteraction,
+    message: string,
+    source: "button" | "command"
+  ) => {
+    const payload = { content: message };
+    try {
+      if (interaction.deferred) {
+        await interaction.editReply(payload);
+        return;
+      }
+      if (interaction.replied) {
+        await interaction.followUp(payload);
+        return;
+      }
+      await interaction.reply(payload);
+    } catch (error) {
+      logger.warn("Failed to send interaction error response", { source, error });
+    }
+  };
 
   client.once(Events.ClientReady, async readyClient => {
     logger.info("Client ready", { userTag: readyClient.user.tag });
@@ -55,11 +75,7 @@ export function registerClientEvents(
       const musicManager = guildManager.musicController;
 
       const respondError = async (message: string) => {
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ content: message });
-        } else {
-          await interaction.reply({ content: message });
-        }
+        await safeRespond(interaction, message, "button");
       };
 
       try {
@@ -114,11 +130,15 @@ export function registerClientEvents(
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
+    const respondCommandError = async (message: string) => {
+      await safeRespond(interaction, message, "command");
+    };
+
     try {
       await command.execute({ client, interaction });
     } catch (error) {
       logger.error("Command execution failed", error);
-      await interaction.reply({ content: "There was an error executing this command" });
+      await respondCommandError("There was an error executing this command");
     }
   });
 

@@ -1,10 +1,9 @@
 import dotenv from "dotenv";
 import { IntentsBitField } from "discord.js";
+import { startYtDlpCookieRefresher } from "./cookieRefresher.js";
 import { createCommands } from "./commands/index.js";
-import { createPlayer } from "./config/player.js";
 import { buildServices } from "./di/container.js";
 import { BotClient } from "./types/bot.js";
-import { registerPlayerEvents } from "./commands/events/playerEvents.js";
 import { registerClientEvents } from "./commands/events/clientEvents.js";
 
 dotenv.config();
@@ -18,6 +17,9 @@ if (!token || !clientId) {
 
 const services = buildServices();
 const logger = services.logger.child({ component: "process" });
+const cookieRefresher = startYtDlpCookieRefresher(
+  services.logger.child({ component: "cookieRefresher" })
+);
 const commands = createCommands(services);
 
 const client = new BotClient(
@@ -32,10 +34,6 @@ const client = new BotClient(
   },
   commands
 );
-
-const player = createPlayer(client);
-
-registerPlayerEvents(player, services);
 registerClientEvents(client, token, clientId, services);
 
 process.on("unhandledRejection", reason => {
@@ -44,6 +42,14 @@ process.on("unhandledRejection", reason => {
 
 process.on("uncaughtException", error => {
   logger.error("Uncaught exception", error);
+});
+
+process.on("SIGTERM", () => {
+  cookieRefresher?.stop();
+});
+
+process.on("SIGINT", () => {
+  cookieRefresher?.stop();
 });
 
 client.login(token);
