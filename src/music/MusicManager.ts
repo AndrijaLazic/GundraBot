@@ -12,7 +12,21 @@ import {
 import type { Guild, VoiceBasedChannel } from "discord.js";
 import { GuildLock } from "../guild/ServerGuildManager.js";
 import { MusicEmbed } from "./MusicEmbed.js";
+import { QueueLimitReachedError } from "./errors/QueueLimitReachedError.js";
 import { YoutubeMusicPlayer } from "./YoutubeMusicPlayer.js";
+
+const DEFAULT_QUEUE_LIMIT_PER_GUILD = 20;
+
+function parsePositiveInt(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value.trim(), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function resolveQueueLimitPerGuild(): number {
+  return parsePositiveInt(process.env.QUEUE_LIMIT_PER_GUILD) ?? DEFAULT_QUEUE_LIMIT_PER_GUILD;
+}
 
 export type TrackInfo = {
   title: string;
@@ -41,6 +55,7 @@ export class MusicManager extends EventEmitter {
   private shuttingDown = false;
   public readonly musicEmbed: MusicEmbed;
   private readonly youtubeHelper: YoutubeMusicPlayer;
+  private readonly queueLimitPerGuild: number;
 
   /**
    * If TRUE: stream is `yt-dlp -> stdout -> ffmpeg -> opus/ogg -> discord`
@@ -58,6 +73,7 @@ export class MusicManager extends EventEmitter {
     this.guild = guild;
     this.lock = new GuildLock();
     this.musicEmbed = new MusicEmbed();
+    this.queueLimitPerGuild = resolveQueueLimitPerGuild();
     this.youtubeHelper = new YoutubeMusicPlayer({
       cookiesPath: process.env.YTDLP_COOKIES,
       pipeFromYtdlp: this.PIPE_FROM_YTDLP,
@@ -91,6 +107,10 @@ export class MusicManager extends EventEmitter {
     const { voiceChannel, queryOrUrl, requestedBy } = args;
 
     return this.lock.withLock(async () => {
+      if (this.queue.length >= this.queueLimitPerGuild) {
+        throw new QueueLimitReachedError(this.queueLimitPerGuild);
+      }
+
       await this.ensureConnected(voiceChannel);
 
       const track = await this.resolveWithYtDlp(queryOrUrl, requestedBy);

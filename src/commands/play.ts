@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import type { Services } from "../di/container.js";
 import type { CommandModule } from "../types/command.js";
-import { error } from "node:console";
+import { QueueLimitReachedError } from "../music/errors/QueueLimitReachedError.js";
 
 export function createPlayCommand(services: Services): CommandModule {
   const { guildManagers } = services;
@@ -88,6 +88,13 @@ export function createPlayCommand(services: Services): CommandModule {
         await interaction.editReply(`Queued: **${track.title}**`);
       } catch (e) {
         requestLogger.error("Enqueue failed", e);
+        if (e instanceof QueueLimitReachedError) {
+          await interaction.editReply(
+            `Queue is full for this server. Maximum queued songs: ${e.limit}.`
+          );
+          return;
+        }
+
         await interaction.editReply("Something went wrong while loading that track.");
       }
     }
